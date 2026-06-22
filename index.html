@@ -497,54 +497,27 @@ function setSyncStatus(text, color) {
   el.style.color = 'white';
 }
 
-// Firebase 存的是物件，需要遞迴轉回陣列
-function fixFirebaseData(obj) {
-  if (obj === null || obj === undefined) return obj;
-  if (typeof obj !== 'object') return obj;
-  if (Array.isArray(obj)) return obj.map(item => fixFirebaseData(item));
-  // 檢查是否為 Firebase 轉換的陣列（key 全是數字）
-  const keys = Object.keys(obj);
-  const isArray = keys.length > 0 && keys.every(k => /^\d+$/.test(k));
-  if (isArray) {
-    const arr = [];
-    keys.forEach(k => { arr[parseInt(k)] = fixFirebaseData(obj[k]); });
-    return arr.filter(item => item !== undefined);
-  }
-  const result = {};
-  for (const key of keys) { result[key] = fixFirebaseData(obj[key]); }
-  return result;
-}
-
-let saving = false;
-
+// Firebase 用 JSON 字串存取，避免陣列/物件轉換問題
 function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(packages));
+  const jsonStr = JSON.stringify(packages);
+  localStorage.setItem(STORAGE_KEY, jsonStr);
   if (firebaseReady) {
-    saving = true;
-    firebase.database().ref('doc-tracker/packages').set(JSON.parse(JSON.stringify(packages)))
-      .then(() => { saving = false; setSyncStatus('✅ 已同步', 'rgba(22,163,74,.8)'); })
-      .catch((e) => { saving = false; setSyncStatus('❌ 同步失敗', 'rgba(220,38,38,.8)'); console.error(e); });
+    firebase.database().ref('doc-tracker/data').set(jsonStr)
+      .then(() => setSyncStatus('✅ 已同步', 'rgba(22,163,74,.8)'))
+      .catch((e) => { setSyncStatus('❌ 同步失敗', 'rgba(220,38,38,.8)'); console.error(e); });
   }
 }
 
-// Firebase 即時監聯
+// Firebase 即時監聽
 if (firebaseReady) {
   setSyncStatus('🔄 連線中...', 'rgba(59,130,246,.8)');
-  firebase.database().ref('doc-tracker/packages').on('value', snapshot => {
-    if (saving) return;
-    const data = snapshot.val();
-    if (data) {
-      const fixed = fixFirebaseData(data);
-      packages = Array.isArray(fixed) ? fixed : Object.values(fixed);
-      packages.forEach(p => {
-        if (!Array.isArray(p.rounds)) p.rounds = p.rounds ? Object.values(p.rounds) : [];
-        p.rounds.forEach(r => {
-          if (!Array.isArray(r.tasks)) r.tasks = r.tasks ? Object.values(r.tasks) : [];
-        });
-      });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(packages));
-    } else {
-      packages = [];
+  firebase.database().ref('doc-tracker/data').on('value', snapshot => {
+    const raw = snapshot.val();
+    if (raw) {
+      try {
+        packages = JSON.parse(raw);
+        localStorage.setItem(STORAGE_KEY, raw);
+      } catch(e) { console.error('資料解析失敗', e); }
     }
     setSyncStatus('✅ 已連線', 'rgba(22,163,74,.8)');
     renderDashboard();
