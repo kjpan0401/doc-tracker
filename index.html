@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文件進版管理系統</title>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --danger: #dc2626;
+    --danger-hover: #b91c1c;
+    --success: #16a34a;
+    --warning: #f59e0b;
+    --bg: #f1f5f9;
+    --card: #ffffff;
+    --text: #1e293b;
+    --text-light: #64748b;
+    --border: #e2e8f0;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  header {
+    background: linear-gradient(135deg, var(--primary), #7c3aed);
+    color: white; padding: 20px 24px; position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  }
+  header h1 { font-size: 1.4rem; }
+  header p { font-size: .85rem; opacity: .85; margin-top: 4px; }
+
+  .container { max-width: 1000px; margin: 0 auto; padding: 20px 16px; }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tab-btn {
+    padding: 10px 20px; border: none; border-radius: var(--radius);
+    background: var(--card); color: var(--text); cursor: pointer;
+    font-size: .95rem; font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    transition: all .2s;
+  }
+  .tab-btn:hover { background: var(--primary); color: white; }
+  .tab-btn.active { background: var(--primary); color: white; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .card {
+    background: var(--card); border-radius: var(--radius); padding: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06); margin-bottom: 16px;
+  }
+  .card h3 { font-size: 1.1rem; margin-bottom: 12px; }
+
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-weight: 500; margin-bottom: 4px; font-size: .9rem; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: .95rem; font-family: inherit;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+  }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 600px) { .form-row, .form-row-3 { grid-template-columns: 1fr; } }
+
+  .btn {
+    padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer;
+    font-size: .9rem; font-weight: 500; font-family: inherit; transition: all .2s;
+  }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-danger:hover { background: var(--danger-hover); }
+  .btn-success { background: var(--success); color: white; }
+  .btn-sm { padding: 6px 12px; font-size: .8rem; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn-outline:hover { background: var(--bg); }
+
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 12px;
+    font-size: .75rem; font-weight: 500;
+  }
+  .badge-danger { background: #fee2e2; color: var(--danger); }
+  .badge-warning { background: #fef3c7; color: #b45309; }
+  .badge-success { background: #dcfce7; color: var(--success); }
+  .badge-info { background: #dbeafe; color: var(--primary); }
+  .badge-purple { background: #f3e8ff; color: #7c3aed; }
+
+  .checklist-add { display: flex; gap: 8px; margin-bottom: 12px; }
+  .checklist-add input { flex: 1; }
+  .checklist-item {
+    display: flex; align-items: center; gap: 10px; padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .checklist-item:last-child { border-bottom: none; }
+  .checklist-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
+  .checklist-item .item-text { flex: 1; font-size: .9rem; }
+  .checklist-item .item-text.done { text-decoration: line-through; color: var(--text-light); }
+  .checklist-item .remove-item { color: var(--danger); cursor: pointer; background: none; border: none; font-size: 1.1rem; }
+
+  .progress-bar { height: 6px; background: var(--border); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+  .progress-bar .fill { height: 100%; border-radius: 3px; background: var(--primary); transition: width .3s; }
+  .progress-bar .fill.complete { background: var(--success); }
+
+  .date-result {
+    margin-top: 6px; padding: 8px 12px; border-radius: 8px; font-size: .85rem; font-weight: 500;
+    display: none;
+  }
+  .date-result.show { display: block; }
+  .date-result.ok { background: #dbeafe; color: var(--primary); }
+  .date-result.warn { background: #fef3c7; color: #b45309; }
+  .date-result.danger { background: #fee2e2; color: var(--danger); }
+
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4);
+    z-index: 200; justify-content: center; align-items: flex-start; padding: 40px 16px;
+    overflow-y: auto;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--card); border-radius: var(--radius); padding: 24px;
+    width: 100%; max-width: 700px; position: relative;
+  }
+  .modal h2 { margin-bottom: 16px; font-size: 1.2rem; }
+  .modal-close {
+    position: absolute; top: 12px; right: 16px; background: none; border: none;
+    font-size: 1.5rem; cursor: pointer; color: var(--text-light);
+  }
+
+  .actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat-card {
+    background: var(--card); border-radius: var(--radius); padding: 16px; text-align: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+  .stat-card .stat-num { font-size: 1.8rem; font-weight: 700; color: var(--primary); }
+  .stat-card .stat-label { font-size: .8rem; color: var(--text-light); margin-top: 4px; }
+
+  .empty-state { text-align: center; padding: 40px; color: var(--text-light); }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+
+  .filter-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .filter-bar select, .filter-bar input { padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: .85rem; font-family: inherit; }
+
+  /* Package card */
+  .pkg-card {
+    background: var(--card); border-radius: var(--radius); padding: 0;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06); margin-bottom: 16px; overflow: hidden;
+  }
+  .pkg-header {
+    padding: 16px 20px; cursor: pointer; display: flex; justify-content: space-between;
+    align-items: center; transition: background .2s; border-left: 5px solid var(--primary);
+  }
+  .pkg-header:hover { background: var(--bg); }
+  .pkg-header .pkg-title { font-weight: 600; font-size: 1.1rem; }
+  .pkg-header .pkg-info { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .pkg-body { padding: 0 20px 16px; display: none; }
+  .pkg-body.open { display: block; }
+
+  .round-item {
+    padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px;
+    margin-bottom: 8px; cursor: pointer; transition: all .2s;
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+  }
+  .round-item:hover { border-color: var(--primary); box-shadow: 0 1px 4px rgba(37,99,235,.15); }
+  .round-item .round-title { font-weight: 500; }
+  .round-item .round-meta { font-size: .8rem; color: var(--text-light); display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .timeline { position: relative; padding-left: 24px; }
+  .timeline::before {
+    content: ''; position: absolute; left: 8px; top: 0; bottom: 0;
+    width: 2px; background: var(--border);
+  }
+  .timeline-item { position: relative; margin-bottom: 12px; }
+  .timeline-item::before {
+    content: ''; position: absolute; left: -20px; top: 6px;
+    width: 10px; height: 10px; border-radius: 50%; background: var(--primary); border: 2px solid white;
+  }
+  .timeline-item.done::before { background: var(--success); }
+  .timeline-item.overdue::before { background: var(--danger); }
+
+  .expand-icon { transition: transform .2s; font-size: 1.2rem; }
+  .expand-icon.open { transform: rotate(90deg); }
+
+  .remain-text { color: var(--danger); font-weight: 700; }
+  .badge-green { background: #dcfce7; color: var(--success); }
+  .badge-gray { background: #f1f5f9; color: var(--text-light); }
+
+  .section-block { margin-bottom: 24px; }
+  .section-header {
+    padding: 12px 16px; border-radius: var(--radius);
+    background: linear-gradient(135deg, var(--primary), #7c3aed);
+    color: white; font-weight: 600; font-size: 1.1rem; margin-bottom: 12px;
+    cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+    user-select: none;
+  }
+  .section-header:hover { opacity: .9; }
+  .section-body { display: none; }
+  .section-body.open { display: block; }
+
+  .pay-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  .pay-table th {
+    background: var(--primary); color: white; padding: 10px 12px; text-align: left;
+    font-weight: 500; position: sticky; top: 0;
+  }
+  .pay-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .pay-table tr:hover td { background: var(--bg); }
+  .pay-table .period-header td {
+    background: linear-gradient(135deg, var(--primary), #7c3aed);
+    color: white; font-weight: 600; font-size: 1rem; padding: 12px;
+  }
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+    <div>
+      <h1>📋 文件進版管理系統</h1>
+      <p>追蹤文件進版時程、送審歷程、負責人及事前作業</p>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <button onclick="exportData()" style="padding:6px 12px;border:1px solid rgba(255,255,255,.4);background:transparent;color:white;border-radius:6px;cursor:pointer;font-size:.8rem;font-family:inherit">📤 匯出備份</button>
+      <label style="padding:6px 12px;border:1px solid rgba(255,255,255,.4);background:transparent;color:white;border-radius:6px;cursor:pointer;font-size:.8rem;font-family:inherit">📥 匯入資料<input type="file" accept=".json" onchange="importData(event)" style="display:none"></label>
+      <span id="sync-status" style="font-size:.75rem;padding:4px 8px;border-radius:4px"></span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="dashboard">總覽</button>
+    <button class="tab-btn" data-tab="packages">文件列表</button>
+    <button class="tab-btn" data-tab="payment">請款總表</button>
+    <button class="tab-btn" data-tab="add-pkg">新增文件</button>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="tab-content active" id="tab-dashboard">
+    <div class="stats" id="stats"></div>
+    <div class="card">
+      <h3>⚠️ 即將到期 / 已逾期</h3>
+      <div id="urgent-list"></div>
+    </div>
+  </div>
+
+  <!-- Package List -->
+  <div class="tab-content" id="tab-packages">
+    <div class="filter-bar">
+      <input type="text" id="search-input" placeholder="搜尋文件名稱..." style="flex:1;min-width:150px;">
+    </div>
+    <div id="pkg-list"></div>
+  </div>
+
+  <!-- Payment Summary -->
+  <div class="tab-content" id="tab-payment">
+    <div id="payment-summary"></div>
+  </div>
+
+  <!-- Add Package -->
+  <div class="tab-content" id="tab-add-pkg">
+    <div class="card">
+      <h3 id="pkg-form-title">新增文件</h3>
+      <form id="pkg-form">
+        <input type="hidden" id="pkg-edit-id">
+        <div class="form-group">
+          <label>所屬區段 *</label>
+          <select id="pkg-section" required>
+            <option value="">請選擇</option>
+            <option value="第一區段">第一區段</option>
+            <option value="第二區段">第二區段</option>
+            <option value="第三區段">第三區段</option>
+            <option value="其他需送審的文件">其他需送審的文件</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>文件名稱 *</label>
+          <input type="text" id="pkg-name" required placeholder="例：結構計算書">
+        </div>
+        <div class="form-group">
+          <label>文件編號</label>
+          <input type="text" id="pkg-number" placeholder="例：DOC-001">
+        </div>
+        <div class="form-group">
+          <label>負責人</label>
+          <input type="text" id="pkg-person" placeholder="例：王小明">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>請款狀態</label>
+            <select id="pkg-payment">
+              <option value="">請選擇</option>
+              <option value="需請款">需請款文件</option>
+              <option value="無須請款">無須請款文件</option>
+              <option value="已請款完成">已請款完成</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>請款日期</label>
+            <input type="date" id="pkg-payment-date">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>第幾期請款</label>
+            <input type="text" id="pkg-payment-period" placeholder="例：第1期">
+          </div>
+          <div class="form-group">
+            <label>核定狀態</label>
+            <select id="pkg-approved">
+              <option value="">請選擇</option>
+              <option value="未核定">未核定</option>
+              <option value="已核定">已核定</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>備註</label>
+          <textarea id="pkg-note" rows="2" placeholder="文件說明..."></textarea>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn btn-primary" id="pkg-submit-btn">儲存文件</button>
+          <button type="button" class="btn btn-outline" onclick="resetPkgForm()">清除</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Round Modal (Add/Edit submission round) -->
+<div class="modal-overlay" id="round-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeRoundModal()">&times;</button>
+    <h2 id="round-form-title">新增送審紀錄</h2>
+    <form id="round-form">
+      <input type="hidden" id="round-pkg-id">
+      <input type="hidden" id="round-edit-id">
+
+      <div class="form-row-3">
+        <div class="form-group">
+          <label>版次 *</label>
+          <input type="text" id="round-version" required placeholder="例：A、B、C">
+        </div>
+        <div class="form-group">
+          <label>審查等級</label>
+          <select id="round-review-level">
+            <option value="">請選擇</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>負責人</label>
+          <input type="text" id="round-person" placeholder="例：王小明">
+        </div>
+      </div>
+
+      <div class="card" style="background:var(--bg);margin-bottom:14px">
+        <h3 style="font-size:.95rem">📤 發文資訊</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>發文文號</label>
+            <input type="text" id="round-send-no" placeholder="例：北工字第1130001號">
+          </div>
+          <div class="form-group">
+            <label>發文日期</label>
+            <input type="date" id="round-send-date">
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="background:var(--bg);margin-bottom:14px">
+        <h3 style="font-size:.95rem">📥 收文資訊</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>收文文號</label>
+            <input type="text" id="round-recv-no" placeholder="例：北工字第1130002號">
+          </div>
+          <div class="form-group">
+            <label>收文日期</label>
+            <input type="date" id="round-recv-date">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>PCM規定天數（從收文日起算）</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span>+</span>
+            <input type="number" id="round-pcm-days" min="0" placeholder="天數" style="width:100px">
+            <span>天</span>
+          </div>
+          <div id="round-pcm-result" class="date-result"></div>
+        </div>
+        <div class="form-group">
+          <label>契約提送天數（從收文日起算）</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span>+</span>
+            <input type="number" id="round-contract-days" min="0" placeholder="天數" style="width:100px">
+            <span>天</span>
+          </div>
+          <div id="round-contract-result" class="date-result"></div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>IVV意見</label>
+        <select id="round-ivv">
+          <option value="">請選擇</option>
+          <option value="無須評鑑">無須評鑑</option>
+          <option value="修正">修正</option>
+          <option value="0版評鑑">0版評鑑</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>備註</label>
+        <textarea id="round-note" rows="2" placeholder="補充說明..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>事前作業清單</label>
+        <div class="checklist-add">
+          <input type="text" id="round-new-task" placeholder="輸入事前作業項目，按 Enter 或點新增">
+          <button type="button" class="btn btn-outline btn-sm" onclick="addRoundTask()">新增</button>
+        </div>
+        <div id="round-task-list"></div>
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="btn btn-primary" id="round-submit-btn">儲存紀錄</button>
+        <button type="button" class="btn btn-outline" onclick="closeRoundModal()">取消</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Round Detail Modal -->
+<div class="modal-overlay" id="detail-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeDetailModal()">&times;</button>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<script>
+// ===== Firebase 設定 =====
+// 請將下方 firebaseConfig 替換為你自己的 Firebase 專案設定
+const firebaseConfig = {
+  apiKey: "AIzaSyA3h1A-Y9UbBkZpPa7PAt6fB81pVfDHNIY",
+  authDomain: "csp890908.firebaseapp.com",
+  databaseURL: "https://csp890908-default-rtdb.firebaseio.com",
+  projectId: "csp890908",
+  storageBucket: "csp890908.firebasestorage.app",
+  messagingSenderId: "611514196943",
+  appId: "1:611514196943:web:9c5aa7d17fa57e87b928ba"
+};
+
+let firebaseReady = false;
+try {
+  if (typeof firebase !== 'undefined' && firebaseConfig.apiKey !== '請貼上你的apiKey') {
+    firebase.initializeApp(firebaseConfig);
+    firebase.database();
+    firebaseReady = true;
+    console.log('Firebase 初始化成功');
+  }
+} catch(e) {
+  console.error('Firebase 初始化失敗:', e);
+  firebaseReady = false;
+}
+
+const STORAGE_KEY = 'doc-tracker-v2';
+let packages = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+let roundTasks = [];
+let openPkgs = {};
+let openSections = {'第一區段':true,'第二區段':true,'第三區段':true,'其他需送審的文件':true};
+const SECTIONS = ['第一區段','第二區段','第三區段','其他需送審的文件'];
+
+function setSyncStatus(text, color) {
+  const el = document.getElementById('sync-status');
+  el.textContent = text;
+  el.style.background = color;
+  el.style.color = 'white';
+}
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(packages));
+  if (firebaseReady) {
+    firebase.database().ref('doc-tracker/packages').set(packages)
+      .then(() => setSyncStatus('✅ 已同步', 'rgba(22,163,74,.8)'))
+      .catch(() => setSyncStatus('❌ 同步失敗', 'rgba(220,38,38,.8)'));
+  }
+}
+
+// Firebase 即時監聽
+if (firebaseReady) {
+  setSyncStatus('🔄 連線中...', 'rgba(59,130,246,.8)');
+  firebase.database().ref('doc-tracker/packages').on('value', snapshot => {
+    const data = snapshot.val();
+    if (data) {
+      packages = Array.isArray(data) ? data : Object.values(data);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(packages));
+    } else {
+      packages = [];
+    }
+    setSyncStatus('✅ 已連線', 'rgba(22,163,74,.8)');
+    renderDashboard();
+    renderPkgList();
+  });
+} else {
+  setSyncStatus('⚠️ 離線模式', 'rgba(100,116,139,.8)');
+}
+
+// 匯出備份
+function exportData() {
+  const blob = new Blob([JSON.stringify(packages, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '文件進版管理_備份_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// 匯入資料
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data)) { alert('檔案格式不正確'); return; }
+      if (!confirm('匯入將覆蓋目前所有資料，確定要繼續嗎？')) return;
+      packages = data;
+      save();
+      renderDashboard();
+      renderPkgList();
+      alert('匯入成功！共 ' + packages.length + ' 份文件');
+    } catch(err) { alert('檔案讀取失敗：' + err.message); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function addDaysToDate(dateStr, days) { const d = new Date(dateStr); d.setDate(d.getDate() + days); return d; }
+function fmtDate(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function remainDays(dateStr) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const t = new Date(dateStr); t.setHours(0,0,0,0);
+  return Math.ceil((t - today) / 86400000);
+}
+function remainText(dateStr) {
+  const r = remainDays(dateStr);
+  const txt = r >= 0 ? '剩餘' + r + '天' : '已逾期' + Math.abs(r) + '天';
+  return `<span class="remain-text">${txt}</span>`;
+}
+function roundStatus(round) {
+  if (round.tasks && round.tasks.length > 0 && round.tasks.every(t => t.done)) return 'completed';
+  const eff = round.pcmDate || round.contractDate || round.recvDate || round.receiveDate;
+  if (!eff) return 'pending';
+  const r = remainDays(eff);
+  if (r < 0) return 'overdue';
+  if (r <= 7) return 'near-due';
+  return 'pending';
+}
+function statusBadge(s) {
+  const m = { completed:['已完成','badge-success'], overdue:['已逾期','badge-danger'], 'near-due':['即將到期','badge-warning'], pending:['進行中','badge-info'] };
+  const [l,c] = m[s]||['',''];
+  return `<span class="badge ${c}">${l}</span>`;
+}
+function taskProgress(tasks) {
+  if (!tasks || tasks.length === 0) return '';
+  const done = tasks.filter(t => t.done).length;
+  const pct = Math.round(done / tasks.length * 100);
+  return `<div class="progress-bar"><div class="fill ${pct===100?'complete':''}" style="width:${pct}%"></div></div>
+    <span style="font-size:.75rem;color:var(--text-light)">事前作業 ${done}/${tasks.length}</span>`;
+}
+
+// === Tabs ===
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'dashboard') renderDashboard();
+    if (btn.dataset.tab === 'packages') renderPkgList();
+    if (btn.dataset.tab === 'payment') renderPaymentSummary();
+  });
+});
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'packages') renderPkgList();
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'payment') renderPaymentSummary();
+}
+
+// === Package CRUD ===
+document.getElementById('pkg-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const editId = document.getElementById('pkg-edit-id').value;
+  const pkg = {
+    id: editId || Date.now().toString(),
+    section: document.getElementById('pkg-section').value,
+    name: document.getElementById('pkg-name').value.trim(),
+    number: document.getElementById('pkg-number').value.trim(),
+    person: document.getElementById('pkg-person').value.trim(),
+    payment: document.getElementById('pkg-payment').value,
+    paymentDate: document.getElementById('pkg-payment-date').value,
+    paymentPeriod: document.getElementById('pkg-payment-period').value.trim(),
+    approved: document.getElementById('pkg-approved').value,
+    note: document.getElementById('pkg-note').value.trim(),
+    rounds: editId ? (packages.find(p => p.id === editId)?.rounds || []) : [],
+    createdAt: editId ? (packages.find(p => p.id === editId)?.createdAt || new Date().toISOString()) : new Date().toISOString()
+  };
+  if (editId) {
+    const idx = packages.findIndex(p => p.id === editId);
+    if (idx >= 0) packages[idx] = pkg;
+  } else {
+    packages.push(pkg);
+  }
+  save(); resetPkgForm(); switchTab('packages');
+});
+
+function resetPkgForm() {
+  document.getElementById('pkg-form').reset();
+  document.getElementById('pkg-edit-id').value = '';
+  document.getElementById('pkg-form-title').textContent = '新增文件';
+  document.getElementById('pkg-submit-btn').textContent = '儲存文件';
+}
+
+function editPkg(id) {
+  const p = packages.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('pkg-edit-id').value = p.id;
+  document.getElementById('pkg-section').value = p.section || '';
+  document.getElementById('pkg-name').value = p.name;
+  document.getElementById('pkg-number').value = p.number || '';
+  document.getElementById('pkg-person').value = p.person || '';
+  document.getElementById('pkg-payment').value = p.payment || '';
+  document.getElementById('pkg-payment-date').value = p.paymentDate || '';
+  document.getElementById('pkg-payment-period').value = p.paymentPeriod || '';
+  document.getElementById('pkg-approved').value = p.approved || '';
+  document.getElementById('pkg-note').value = p.note || '';
+  document.getElementById('pkg-form-title').textContent = '編輯文件';
+  document.getElementById('pkg-submit-btn').textContent = '更新文件';
+  switchTab('add-pkg');
+}
+
+function deletePkg(id) {
+  if (!confirm('確定要刪除此文件及所有送審紀錄嗎？')) return;
+  packages = packages.filter(p => p.id !== id);
+  save(); renderPkgList(); renderDashboard();
+}
+
+// === Round CRUD ===
+function openAddRound(pkgId) {
+  document.getElementById('round-pkg-id').value = pkgId;
+  document.getElementById('round-edit-id').value = '';
+  document.getElementById('round-form').reset();
+  document.getElementById('round-form-title').textContent = '新增送審紀錄';
+  document.getElementById('round-submit-btn').textContent = '儲存紀錄';
+  document.getElementById('round-pcm-result').className = 'date-result';
+  document.getElementById('round-contract-result').className = 'date-result';
+  roundTasks = [];
+  renderRoundTasks();
+  document.getElementById('round-modal').classList.add('open');
+}
+
+function editRound(pkgId, roundId) {
+  const pkg = packages.find(p => p.id === pkgId);
+  const round = pkg?.rounds.find(r => r.id === roundId);
+  if (!round) return;
+  document.getElementById('round-pkg-id').value = pkgId;
+  document.getElementById('round-edit-id').value = roundId;
+  document.getElementById('round-version').value = round.version || '';
+  document.getElementById('round-review-level').value = round.reviewLevel || '';
+  document.getElementById('round-person').value = round.person || '';
+  document.getElementById('round-send-no').value = round.sendNo || '';
+  document.getElementById('round-send-date').value = round.sendDate || '';
+  document.getElementById('round-recv-no').value = round.recvNo || '';
+  document.getElementById('round-recv-date').value = round.recvDate || '';
+  document.getElementById('round-pcm-days').value = round.pcmDays != null ? round.pcmDays : '';
+  document.getElementById('round-contract-days').value = round.contractDays != null ? round.contractDays : '';
+  document.getElementById('round-ivv').value = round.ivv || '';
+  document.getElementById('round-note').value = round.note || '';
+  roundTasks = round.tasks ? round.tasks.map(t => ({...t})) : [];
+  renderRoundTasks();
+  updateRoundDatePreview();
+  document.getElementById('round-form-title').textContent = '編輯送審紀錄';
+  document.getElementById('round-submit-btn').textContent = '更新紀錄';
+  closeDetailModal();
+  document.getElementById('round-modal').classList.add('open');
+}
+
+function deleteRound(pkgId, roundId) {
+  if (!confirm('確定要刪除此送審紀錄嗎？')) return;
+  const pkg = packages.find(p => p.id === pkgId);
+  if (pkg) { pkg.rounds = pkg.rounds.filter(r => r.id !== roundId); save(); }
+  closeDetailModal(); renderPkgList(); renderDashboard();
+}
+
+document.getElementById('round-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const pkgId = document.getElementById('round-pkg-id').value;
+  const editId = document.getElementById('round-edit-id').value;
+  const recvDate = document.getElementById('round-recv-date').value;
+  const pcmDays = parseInt(document.getElementById('round-pcm-days').value);
+  const contractDays = parseInt(document.getElementById('round-contract-days').value);
+  const version = document.getElementById('round-version').value.trim();
+  const round = {
+    id: editId || Date.now().toString(),
+    version,
+    reviewLevel: document.getElementById('round-review-level').value,
+    person: document.getElementById('round-person').value.trim(),
+    sendNo: document.getElementById('round-send-no').value.trim(),
+    sendDate: document.getElementById('round-send-date').value,
+    recvNo: document.getElementById('round-recv-no').value.trim(),
+    recvDate,
+    pcmDays: isNaN(pcmDays) ? null : pcmDays,
+    pcmDate: recvDate && !isNaN(pcmDays) ? fmtDate(addDaysToDate(recvDate, pcmDays)) : '',
+    contractDays: isNaN(contractDays) ? null : contractDays,
+    contractDate: recvDate && !isNaN(contractDays) ? fmtDate(addDaysToDate(recvDate, contractDays)) : '',
+    ivv: document.getElementById('round-ivv').value,
+    note: document.getElementById('round-note').value.trim(),
+    tasks: [...roundTasks]
+  };
+  const pkg = packages.find(p => p.id === pkgId);
+  if (!pkg) return;
+  if (editId) {
+    const idx = pkg.rounds.findIndex(r => r.id === editId);
+    if (idx >= 0) pkg.rounds[idx] = round;
+  } else {
+    pkg.rounds.push(round);
+  }
+  save(); closeRoundModal(); openPkgs[pkgId] = true; renderPkgList(); renderDashboard();
+});
+
+function closeRoundModal() { document.getElementById('round-modal').classList.remove('open'); }
+function closeDetailModal() { document.getElementById('detail-modal').classList.remove('open'); }
+document.getElementById('round-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeRoundModal(); });
+document.getElementById('detail-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeDetailModal(); });
+
+// Round tasks
+document.getElementById('round-new-task').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addRoundTask(); } });
+function addRoundTask() {
+  const input = document.getElementById('round-new-task');
+  const text = input.value.trim();
+  if (!text) return;
+  roundTasks.push({ text, done: false });
+  input.value = '';
+  renderRoundTasks();
+}
+function renderRoundTasks() {
+  document.getElementById('round-task-list').innerHTML = roundTasks.map((t, i) => `
+    <div class="checklist-item">
+      <input type="checkbox" ${t.done?'checked':''} onchange="roundTasks[${i}].done=this.checked">
+      <span class="item-text ${t.done?'done':''}">${esc(t.text)}</span>
+      <button class="remove-item" onclick="roundTasks.splice(${i},1);renderRoundTasks()">✕</button>
+    </div>
+  `).join('');
+}
+
+// Date preview
+function updateRoundDatePreview() {
+  const rd = document.getElementById('round-recv-date').value;
+  const pd = parseInt(document.getElementById('round-pcm-days').value);
+  const cd = parseInt(document.getElementById('round-contract-days').value);
+  const pr = document.getElementById('round-pcm-result');
+  const cr = document.getElementById('round-contract-result');
+  if (rd && !isNaN(pd)) {
+    const ds = fmtDate(addDaysToDate(rd, pd)); const rem = remainDays(ds);
+    pr.innerHTML = `📅 ${ds} 繳交PCM（${remainText(ds)}）`;
+    pr.className = 'date-result show ' + (rem < 0 ? 'danger' : rem <= 7 ? 'warn' : 'ok');
+  } else { pr.className = 'date-result'; }
+  if (rd && !isNaN(cd)) {
+    const ds = fmtDate(addDaysToDate(rd, cd)); const rem = remainDays(ds);
+    cr.innerHTML = `📅 ${ds} 契約提送（${remainText(ds)}）`;
+    cr.className = 'date-result show ' + (rem < 0 ? 'danger' : rem <= 7 ? 'warn' : 'ok');
+  } else { cr.className = 'date-result'; }
+}
+document.getElementById('round-recv-date').addEventListener('change', updateRoundDatePreview);
+document.getElementById('round-pcm-days').addEventListener('input', updateRoundDatePreview);
+document.getElementById('round-contract-days').addEventListener('input', updateRoundDatePreview);
+
+// Toggle task in detail
+function toggleRoundTask(pkgId, roundId, taskIdx, checked) {
+  const pkg = packages.find(p => p.id === pkgId);
+  const round = pkg?.rounds.find(r => r.id === roundId);
+  if (round && round.tasks[taskIdx] !== undefined) {
+    round.tasks[taskIdx].done = checked;
+    save(); showRoundDetail(pkgId, roundId); renderPkgList();
+  }
+}
+
+// === Render Package List ===
+function toggleSection(sec) {
+  openSections[sec] = !openSections[sec];
+  renderPkgList();
+}
+
+function renderPkgList() {
+  const search = document.getElementById('search-input').value.trim().toLowerCase();
+  let filtered = packages.filter(p => !search || p.name.toLowerCase().includes(search) || (p.number||'').toLowerCase().includes(search));
+
+  const container = document.getElementById('pkg-list');
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">📂</div><p>尚無文件，點擊「新增文件」開始</p></div>';
+    return;
+  }
+
+  const grouped = {};
+  SECTIONS.forEach(s => grouped[s] = []);
+  filtered.forEach(p => {
+    const sec = p.section || '其他需送審的文件';
+    if (!grouped[sec]) grouped[sec] = [];
+    grouped[sec].push(p);
+  });
+
+  container.innerHTML = SECTIONS.map(sec => {
+    const pkgs = grouped[sec];
+    if (pkgs.length === 0 && search) return '';
+    const isOpen = openSections[sec];
+    const totalRounds = pkgs.reduce((sum, p) => sum + p.rounds.length, 0);
+    return `
+      <div class="section-block">
+        <div class="section-header" onclick="toggleSection('${esc(sec)}')">
+          <span>📂 ${esc(sec)}（${pkgs.length} 份文件 / ${totalRounds} 筆紀錄）</span>
+          <span class="expand-icon ${isOpen?'open':''}">▶</span>
+        </div>
+        <div class="section-body ${isOpen?'open':''}">
+          ${pkgs.length === 0 ? '<p style="color:var(--text-light);font-size:.9rem;padding:8px 16px">此區段尚無文件</p>' : pkgs.map(p => renderPkgCard(p)).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderPkgCard(p) {
+    const isOpen = openPkgs[p.id];
+    const roundCount = p.rounds.length;
+    const urgentCount = p.rounds.filter(r => { const s = roundStatus(r); return s === 'overdue' || s === 'near-due'; }).length;
+
+  return `
+      <div class="pkg-card">
+        <div class="pkg-header" onclick="togglePkg('${p.id}')">
+          <div>
+            <div class="pkg-title">${esc(p.name)} ${p.number ? `<span style="font-weight:400;color:var(--text-light);font-size:.85rem">${esc(p.number)}</span>` : ''} ${p.approved === '已核定' ? '<span class="badge badge-green">已核定</span>' : ''} ${p.payment === '已請款完成' ? '<span class="badge badge-green">已請款完成</span>' : p.payment === '需請款' ? '<span class="badge badge-warning">需請款</span>' : p.payment === '無須請款' ? '<span class="badge badge-gray">無須請款</span>' : ''}${p.paymentDate ? ' <span style="font-size:.8rem;font-weight:400;color:var(--text-light)">請款日：'+p.paymentDate+'</span>' : ''}${p.paymentPeriod ? ' <span class="badge badge-purple">'+esc(p.paymentPeriod)+'</span>' : ''}</div>
+            <div style="font-size:.8rem;color:var(--text-light);margin-top:4px">
+              ${p.person ? '👤 '+esc(p.person)+' ｜ ' : ''}共 ${roundCount} 筆送審紀錄
+              ${urgentCount > 0 ? ` ｜ <span style="color:var(--danger)">${urgentCount} 筆需注意</span>` : ''}
+            </div>
+          </div>
+          <div class="pkg-info">
+            <span class="expand-icon ${isOpen?'open':''}">▶</span>
+          </div>
+        </div>
+        <div class="pkg-body ${isOpen?'open':''}" id="pkg-body-${p.id}">
+          <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-success btn-sm" onclick="event.stopPropagation();openAddRound('${p.id}')">＋ 新增送審紀錄</button>
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();editPkg('${p.id}')">編輯文件</button>
+            <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletePkg('${p.id}')">刪除文件</button>
+          </div>
+          ${roundCount === 0 ? '<p style="color:var(--text-light);font-size:.9rem;padding:8px 0">尚無送審紀錄</p>' :
+            (() => {
+              const grouped = {};
+              p.rounds.forEach(r => { const v = r.version || '未分類'; if (!grouped[v]) grouped[v] = []; grouped[v].push(r); });
+              return Object.entries(grouped).map(([ver, rounds]) => `
+                <div style="margin-bottom:16px">
+                  <div style="font-weight:600;font-size:.95rem;margin-bottom:8px;padding:6px 12px;background:var(--bg);border-radius:6px;border-left:3px solid var(--primary)">
+                    📁 ${esc(ver)}版
+                    ${rounds[0].reviewLevel ? `<span class="badge badge-warning" style="margin-left:6px">審查${esc(rounds[0].reviewLevel)}</span>` : ''}
+                  </div>
+                  <div class="timeline">
+                  ${rounds.map(r => {
+                    const s = roundStatus(r);
+                    return `
+                      <div class="timeline-item ${s === 'completed' ? 'done' : s === 'overdue' ? 'overdue' : ''}">
+                        <div class="round-item" onclick="event.stopPropagation();showRoundDetail('${p.id}','${r.id}')">
+                          <div style="width:100%">
+                            <div class="round-title">
+                              ${r.sendNo ? `<span>📤 發文：${esc(r.sendNo)}</span>` : ''}
+                              ${r.recvNo ? `<span>📥 收文：${esc(r.recvNo)}</span>` : ''}
+                              ${!r.sendNo && !r.recvNo ? `<span>${esc(ver)}版紀錄</span>` : ''}
+                              ${statusBadge(s)}
+                            </div>
+                            <div class="round-meta">
+                              ${r.person ? `<span>👤 ${esc(r.person)}</span>` : ''}
+                              ${r.sendDate ? `<span>📤 發文日：${r.sendDate}</span>` : ''}
+                              ${r.recvDate ? `<span>📥 收文日：${r.recvDate}</span>` : ''}
+                              ${r.pcmDate ? `<span>PCM：${r.pcmDate}（${remainText(r.pcmDate)}）</span>` : ''}
+                              ${r.contractDate ? `<span>契約：${r.contractDate}（${remainText(r.contractDate)}）</span>` : ''}
+                            </div>
+                            ${taskProgress(r.tasks)}
+                          </div>
+                        </div>
+                      </div>`;
+                  }).join('')}
+                  </div>
+                </div>
+              `).join('');
+            })()
+          }
+        </div>
+      </div>`;
+}
+
+function togglePkg(id) {
+  openPkgs[id] = !openPkgs[id];
+  renderPkgList();
+}
+
+// === Round Detail ===
+function showRoundDetail(pkgId, roundId) {
+  const pkg = packages.find(p => p.id === pkgId);
+  const r = pkg?.rounds.find(x => x.id === roundId);
+  if (!r) return;
+  const s = roundStatus(r);
+  const tasksHtml = r.tasks && r.tasks.length > 0
+    ? r.tasks.map((t, i) => `
+        <div class="checklist-item">
+          <input type="checkbox" ${t.done?'checked':''} onchange="toggleRoundTask('${pkgId}','${roundId}',${i},this.checked)">
+          <span class="item-text ${t.done?'done':''}">${esc(t.text)}</span>
+        </div>`).join('')
+    : '<p style="color:var(--text-light);font-size:.9rem">尚未設定事前作業</p>';
+
+  document.getElementById('detail-content').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+      <h2 style="margin:0">${esc(pkg.name)} — ${esc(r.version || '')}版</h2>
+      ${statusBadge(s)}
+    </div>
+    <p style="color:var(--text-light);margin-bottom:16px;font-size:.85rem">
+      ${r.version ? '版次：'+esc(r.version) : ''}${r.reviewLevel ? ' ｜ 審查等級：'+esc(r.reviewLevel) : ''}${r.person ? ' ｜ 負責人：'+esc(r.person) : ''}
+    </p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="card" style="margin:0;border-left:3px solid var(--primary)">
+        <div style="font-size:.8rem;color:var(--text-light)">📤 發文文號</div>
+        <div style="font-weight:600;font-size:1rem;margin-top:4px">${r.sendNo ? esc(r.sendNo) : '—'}</div>
+        ${r.sendDate ? `<div style="font-size:.8rem;color:var(--text-light);margin-top:4px">日期：${r.sendDate}</div>` : ''}
+      </div>
+      <div class="card" style="margin:0;border-left:3px solid #7c3aed">
+        <div style="font-size:.8rem;color:var(--text-light)">📥 收文文號</div>
+        <div style="font-weight:600;font-size:1rem;margin-top:4px">${r.recvNo ? esc(r.recvNo) : '—'}</div>
+        ${r.recvDate ? `<div style="font-size:.8rem;color:var(--text-light);margin-top:4px">日期：${r.recvDate}</div>` : ''}
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div class="card" style="margin:0">
+        <div style="font-size:.8rem;color:var(--text-light)">PCM規定時間</div>
+        <div style="font-weight:600;font-size:1.1rem">${r.pcmDate || '—'}</div>
+        ${r.pcmDate ? `<div style="font-size:.8rem;margin-top:4px">${remainText(r.pcmDate)}</div>` : ''}
+      </div>
+      <div class="card" style="margin:0">
+        <div style="font-size:.8rem;color:var(--text-light)">契約提送時間</div>
+        <div style="font-weight:600;font-size:1.1rem">${r.contractDate || '—'}</div>
+        ${r.contractDate ? `<div style="font-size:.8rem;margin-top:4px">${remainText(r.contractDate)}</div>` : ''}
+      </div>
+    </div>
+    ${r.ivv ? `<div class="card" style="margin-bottom:12px"><div style="font-size:.8rem;color:var(--text-light)">IVV意見</div><div style="font-weight:600;margin-top:4px">${esc(r.ivv)}</div></div>` : ''}
+    ${r.note ? `<div class="card" style="margin-bottom:12px"><div style="font-size:.8rem;color:var(--text-light)">備註</div><div style="margin-top:4px">${esc(r.note)}</div></div>` : ''}
+    <div class="card" style="margin-bottom:0">
+      <h3>事前作業清單</h3>
+      ${taskProgress(r.tasks)}
+      <div style="margin-top:8px">${tasksHtml}</div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary btn-sm" onclick="editRound('${pkgId}','${r.id}')">編輯</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteRound('${pkgId}','${r.id}')">刪除</button>
+    </div>
+  `;
+  document.getElementById('detail-modal').classList.add('open');
+}
+
+// === Dashboard ===
+function renderDashboard() {
+  let totalRounds = 0, completed = 0, overdue = 0, nearDue = 0;
+  const urgentItems = [];
+  packages.forEach(p => {
+    p.rounds.forEach(r => {
+      totalRounds++;
+      const s = roundStatus(r);
+      if (s === 'completed') completed++;
+      if (s === 'overdue') { overdue++; urgentItems.push({pkg:p, round:r, status:s}); }
+      if (s === 'near-due') { nearDue++; urgentItems.push({pkg:p, round:r, status:s}); }
+    });
+  });
+
+  document.getElementById('stats').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${packages.length}</div><div class="stat-label">文件數</div></div>
+    <div class="stat-card"><div class="stat-num">${totalRounds}</div><div class="stat-label">送審紀錄</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--success)">${completed}</div><div class="stat-label">已完成</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--warning)">${nearDue}</div><div class="stat-label">即將到期</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--danger)">${overdue}</div><div class="stat-label">已逾期</div></div>
+  `;
+
+  const container = document.getElementById('urgent-list');
+  if (urgentItems.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>太好了！目前沒有緊急項目</p></div>';
+  } else {
+    urgentItems.sort((a,b) => {
+      const da = a.round.pcmDate || a.round.contractDate || a.round.recvDate || a.round.receiveDate;
+      const db = b.round.pcmDate || b.round.contractDate || b.round.recvDate || b.round.receiveDate;
+      return new Date(da) - new Date(db);
+    });
+    container.innerHTML = urgentItems.map(item => `
+      <div class="round-item" onclick="showRoundDetail('${item.pkg.id}','${item.round.id}')" style="border-left:3px solid ${item.status==='overdue'?'var(--danger)':'var(--warning)'}">
+        <div>
+          <div class="round-title">${esc(item.pkg.name)} — ${esc(item.round.version||'')}版 ${statusBadge(item.status)}</div>
+          <div class="round-meta">
+            ${item.round.person ? `<span>👤 ${esc(item.round.person)}</span>` : ''}
+            ${item.round.sendNo ? `<span>📤 ${esc(item.round.sendNo)}</span>` : ''}
+            ${item.round.recvNo ? `<span>📥 ${esc(item.round.recvNo)}</span>` : ''}
+            ${item.round.pcmDate ? `<span>PCM：${item.round.pcmDate}（${remainText(item.round.pcmDate)}）</span>` : ''}
+            ${item.round.contractDate ? `<span>契約：${item.round.contractDate}（${remainText(item.round.contractDate)}）</span>` : ''}
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+// === Payment Summary ===
+function renderPaymentSummary() {
+  const payPkgs = packages.filter(p => p.payment && p.payment !== '無須請款');
+  const container = document.getElementById('payment-summary');
+
+  if (payPkgs.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">💰</div><p>目前沒有需請款的文件</p></div>';
+    return;
+  }
+
+  const grouped = {};
+  payPkgs.forEach(p => {
+    const period = p.paymentPeriod || '未指定期數';
+    if (!grouped[period]) grouped[period] = [];
+    grouped[period].push(p);
+  });
+
+  const periods = Object.keys(grouped).sort((a, b) => {
+    const na = parseInt(a.replace(/\D/g, '')) || 9999;
+    const nb = parseInt(b.replace(/\D/g, '')) || 9999;
+    return na - nb;
+  });
+
+  let html = '';
+  periods.forEach(period => {
+    const items = grouped[period];
+    const doneCount = items.filter(p => p.payment === '已請款完成').length;
+    const totalCount = items.length;
+
+    html += `
+      <div class="card" style="margin-bottom:20px;padding:0;overflow:hidden">
+        <table class="pay-table">
+          <tr class="period-header">
+            <td colspan="6">
+              💰 ${esc(period)}
+              <span style="font-weight:400;font-size:.85rem;margin-left:12px">
+                共 ${totalCount} 份文件，已請款 ${doneCount} 份
+              </span>
+              ${doneCount === totalCount ? ' <span class="badge badge-green" style="margin-left:8px">全部完成</span>' : ''}
+            </td>
+          </tr>
+          <tr>
+            <th>區段</th>
+            <th>文件名稱</th>
+            <th>負責人</th>
+            <th>請款日期</th>
+            <th>核定狀態</th>
+            <th>請款狀態</th>
+          </tr>
+          ${items.map(p => {
+            const hasRounds = p.rounds && p.rounds.length > 0;
+            const groupedRounds = {};
+            if (hasRounds) {
+              p.rounds.forEach(r => { const v = r.version || '未分類'; if (!groupedRounds[v]) groupedRounds[v] = []; groupedRounds[v].push(r); });
+            }
+            return `
+              <tr style="cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'table-row':'none'">
+                <td>${esc(p.section || '—')}</td>
+                <td style="font-weight:500">
+                  ${hasRounds ? '<span style="color:var(--primary);margin-right:4px">▶</span>' : ''}
+                  ${esc(p.name)}${p.number ? ' <span style="color:var(--text-light);font-size:.8rem">'+esc(p.number)+'</span>' : ''}
+                  <span style="color:var(--text-light);font-size:.8rem;margin-left:6px">${p.rounds.length} 筆紀錄</span>
+                </td>
+                <td>${esc(p.person || '—')}</td>
+                <td>${p.paymentDate || '—'}</td>
+                <td>${p.approved === '已核定' ? '<span class="badge badge-green">已核定</span>' : p.approved === '未核定' ? '<span class="badge badge-warning">未核定</span>' : '—'}</td>
+                <td>${p.payment === '已請款完成' ? '<span class="badge badge-green">✅ 已請款完成</span>' : '<span class="badge badge-warning">需請款</span>'}</td>
+              </tr>
+              <tr style="display:none">
+                <td colspan="6" style="padding:0;background:var(--bg)">
+                  ${hasRounds ? `
+                    <div style="padding:12px 16px">
+                      ${Object.entries(groupedRounds).map(([ver, rounds]) => `
+                        <div style="margin-bottom:12px">
+                          <div style="font-weight:600;font-size:.9rem;margin-bottom:6px;padding:4px 10px;background:white;border-radius:6px;border-left:3px solid var(--primary);display:inline-block">
+                            📁 ${esc(ver)}版
+                            ${rounds[0].reviewLevel ? '<span class="badge badge-warning" style="margin-left:4px">審查'+esc(rounds[0].reviewLevel)+'</span>' : ''}
+                          </div>
+                          ${rounds.map(r => {
+                            const s = roundStatus(r);
+                            return `
+                              <div style="margin:6px 0 6px 16px;padding:10px 14px;background:white;border-radius:8px;border-left:3px solid ${s==='completed'?'var(--success)':s==='overdue'?'var(--danger)':'var(--primary)'}">
+                                <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:4px">
+                                  ${r.sendNo ? '<span style="font-weight:500">📤 '+esc(r.sendNo)+'</span>' : ''}
+                                  ${r.recvNo ? '<span style="font-weight:500">📥 '+esc(r.recvNo)+'</span>' : ''}
+                                  ${!r.sendNo && !r.recvNo ? '<span style="font-weight:500">'+esc(ver)+'版紀錄</span>' : ''}
+                                  ${statusBadge(s)}
+                                  ${r.ivv ? '<span class="badge badge-purple">IVV：'+esc(r.ivv)+'</span>' : ''}
+                                </div>
+                                <div style="font-size:.8rem;color:var(--text-light);display:flex;flex-wrap:wrap;gap:10px">
+                                  ${r.person ? '<span>👤 '+esc(r.person)+'</span>' : ''}
+                                  ${r.sendDate ? '<span>📤 發文日：'+r.sendDate+'</span>' : ''}
+                                  ${r.recvDate ? '<span>📥 收文日：'+r.recvDate+'</span>' : ''}
+                                  ${r.pcmDate ? '<span>PCM：'+r.pcmDate+'（'+remainText(r.pcmDate)+'）</span>' : ''}
+                                  ${r.contractDate ? '<span>契約：'+r.contractDate+'（'+remainText(r.contractDate)+'）</span>' : ''}
+                                </div>
+                                ${r.tasks && r.tasks.length > 0 ? '<div style="margin-top:6px;font-size:.8rem;color:var(--text-light)">事前作業：'+r.tasks.filter(t=>t.done).length+'/'+r.tasks.length+' 完成</div>' : ''}
+                                ${r.note ? '<div style="margin-top:4px;font-size:.8rem;color:var(--text-light)">備註：'+esc(r.note)+'</div>' : ''}
+                              </div>`;
+                          }).join('')}
+                        </div>
+                      `).join('')}
+                    </div>
+                  ` : '<div style="padding:12px 16px;color:var(--text-light);font-size:.9rem">尚無送審紀錄</div>'}
+                </td>
+              </tr>`;
+          }).join('')}
+        </table>
+      </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+// Filter
+document.getElementById('search-input').addEventListener('input', renderPkgList);
+
+// Init
+renderDashboard();
+renderPkgList();
+</script>
+</body>
+</html>
