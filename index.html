@@ -485,6 +485,10 @@ try {
 
 const STORAGE_KEY = 'doc-tracker-v2';
 let packages = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+packages.forEach(p => {
+  if (!Array.isArray(p.rounds)) p.rounds = [];
+  p.rounds.forEach(r => { if (!Array.isArray(r.tasks)) r.tasks = []; });
+});
 let roundTasks = [];
 let openPkgs = {};
 let openSections = {'第一區段':true,'第二區段':true,'第三區段':true,'其他需送審的文件':true};
@@ -516,12 +520,18 @@ if (firebaseReady) {
     if (raw) {
       try {
         packages = JSON.parse(raw);
-        localStorage.setItem(STORAGE_KEY, raw);
+        packages.forEach(p => {
+          if (!Array.isArray(p.rounds)) p.rounds = [];
+          p.rounds.forEach(r => {
+            if (!Array.isArray(r.tasks)) r.tasks = [];
+          });
+        });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(packages));
       } catch(e) { console.error('資料解析失敗', e); }
     }
     setSyncStatus('✅ 已連線', 'rgba(22,163,74,.8)');
-    renderDashboard();
-    renderPkgList();
+    try { renderDashboard(); } catch(e) { console.error('renderDashboard error', e); }
+    try { renderPkgList(); } catch(e) { console.error('renderPkgList error', e); }
   });
 } else {
   setSyncStatus('⚠️ 離線模式', 'rgba(100,116,139,.8)');
