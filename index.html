@@ -611,6 +611,12 @@ function roundStatus(round, pkg) {
     const currentOrder = versionOrder(round.version);
     const hasNewer = versions.some(v => versionOrder(v) > currentOrder);
     if (hasNewer) return 'completed';
+    // 同版次中，只有最後一筆為進行中，其餘標為已完成
+    const sameVerRounds = pkg.rounds.filter(r => r.version === round.version);
+    if (sameVerRounds.length > 1) {
+      const lastRound = sameVerRounds[sameVerRounds.length - 1];
+      if (round.id !== lastRound.id) return 'completed';
+    }
   }
   if (round.tasks && round.tasks.length > 0 && round.tasks.every(t => t.done)) return 'completed';
   const eff = round.pcmDate || round.contractDate || round.recvDate || round.receiveDate;
