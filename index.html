@@ -951,8 +951,8 @@ function renderPkgCard(p) {
                               ${r.person ? `<span>👤 ${esc(r.person)}</span>` : ''}
                               ${r.sendDate ? `<span>📤 發文日：${r.sendDate}</span>` : ''}
                               ${r.recvDate ? `<span>📥 收文日：${r.recvDate}</span>` : ''}
-                              ${r.pcmDate ? `<span>PCM：${r.pcmDate}（${remainText(r.pcmDate)}）</span>` : ''}
-                              ${r.contractDate ? `<span>契約：${r.contractDate}（${remainText(r.contractDate)}）</span>` : ''}
+                              ${r.pcmDate ? `<span>PCM：${r.pcmDate}${s !== 'completed' ? '（'+remainText(r.pcmDate)+'）' : ''}</span>` : ''}
+                              ${r.contractDate ? `<span>契約：${r.contractDate}${s !== 'completed' ? '（'+remainText(r.contractDate)+'）' : ''}</span>` : ''}
                             </div>
                             ${taskProgress(r.tasks)}
                           </div>
