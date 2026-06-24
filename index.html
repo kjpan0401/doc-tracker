@@ -260,6 +260,11 @@
   <div class="tab-content" id="tab-packages">
     <div class="filter-bar">
       <input type="text" id="search-input" placeholder="搜尋文件名稱..." style="flex:1;min-width:150px;">
+      <select id="sort-mode" onchange="renderPkgList()">
+        <option value="stroke">依筆畫排序</option>
+        <option value="number">依編號排序</option>
+        <option value="time">依建立時間</option>
+      </select>
     </div>
     <div id="pkg-list"></div>
   </div>
@@ -837,6 +842,13 @@ function renderPkgList() {
     container.innerHTML = '<div class="empty-state"><div class="icon">📂</div><p>尚無文件，點擊「新增文件」開始</p></div>';
     return;
   }
+
+  const sortMode = document.getElementById('sort-mode').value;
+  filtered.sort((a, b) => {
+    if (sortMode === 'stroke') return a.name.localeCompare(b.name, 'zh-Hant-TW', { sensitivity: 'base' });
+    if (sortMode === 'number') return (a.number || '').localeCompare(b.number || '', undefined, { numeric: true });
+    return (a.createdAt || '').localeCompare(b.createdAt || '');
+  });
 
   const grouped = {};
   SECTIONS.forEach(s => grouped[s] = []);
