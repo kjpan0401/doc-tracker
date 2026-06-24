@@ -427,6 +427,7 @@
         <select id="round-ivv">
           <option value="">請選擇</option>
           <option value="無須評鑑">無須評鑑</option>
+          <option value="可接受">可接受</option>
           <option value="修正">修正</option>
           <option value="0版評鑑">0版評鑑</option>
         </select>
@@ -586,12 +587,28 @@ function remainText(dateStr) {
   const txt = r >= 0 ? '剩餘' + r + '天' : '已逾期' + Math.abs(r) + '天';
   return `<span class="remain-text">${txt}</span>`;
 }
+// 版次排序：A~E → 0 → 0A~0E → 1 → 1A~1E → 2 ...
+function versionOrder(v) {
+  if (!v) return -1;
+  v = v.toUpperCase();
+  const letterVal = {'A':1,'B':2,'C':3,'D':4,'E':5};
+  // 純字母 A~E（初始進版）
+  if (/^[A-E]$/.test(v)) return letterVal[v];
+  // 純數字 0, 1, 2...（審查等級A後的版本）
+  if (/^\d+$/.test(v)) return (parseInt(v) + 1) * 10;
+  // 數字+字母 0A, 1B...
+  const m = v.match(/^(\d+)([A-E])$/);
+  if (m) return (parseInt(m[1]) + 1) * 10 + letterVal[m[2]];
+  return -1;
+}
+
 function roundStatus(round, pkg) {
   // 如果有更新的版次存在，此版次自動標為已完成
   if (pkg && round.version) {
-    const versions = [...new Set(pkg.rounds.map(r => r.version).filter(Boolean))].sort();
-    const currentIdx = versions.indexOf(round.version);
-    if (currentIdx >= 0 && currentIdx < versions.length - 1) return 'completed';
+    const versions = [...new Set(pkg.rounds.map(r => r.version).filter(Boolean))];
+    const currentOrder = versionOrder(round.version);
+    const hasNewer = versions.some(v => versionOrder(v) > currentOrder);
+    if (hasNewer) return 'completed';
   }
   if (round.tasks && round.tasks.length > 0 && round.tasks.every(t => t.done)) return 'completed';
   const eff = round.pcmDate || round.contractDate || round.recvDate || round.receiveDate;
@@ -911,7 +928,7 @@ function renderPkgCard(p) {
             (() => {
               const grouped = {};
               p.rounds.forEach(r => { const v = r.version || '未分類'; if (!grouped[v]) grouped[v] = []; grouped[v].push(r); });
-              return Object.entries(grouped).map(([ver, rounds]) => `
+              return Object.entries(grouped).sort((a,b) => versionOrder(a[0]) - versionOrder(b[0])).map(([ver, rounds]) => `
                 <div style="margin-bottom:16px">
                   <div style="font-weight:600;font-size:.95rem;margin-bottom:8px;padding:6px 12px;background:var(--bg);border-radius:6px;border-left:3px solid var(--primary)">
                     📁 ${esc(ver)}版
@@ -1137,7 +1154,7 @@ function renderPaymentSummary() {
                 <td colspan="6" style="padding:0;background:var(--bg)">
                   ${hasRounds ? `
                     <div style="padding:12px 16px">
-                      ${Object.entries(groupedRounds).map(([ver, rounds]) => `
+                      ${Object.entries(groupedRounds).sort((a,b) => versionOrder(a[0]) - versionOrder(b[0])).map(([ver, rounds]) => `
                         <div style="margin-bottom:12px">
                           <div style="font-weight:600;font-size:.9rem;margin-bottom:6px;padding:4px 10px;background:white;border-radius:6px;border-left:3px solid var(--primary);display:inline-block">
                             📁 ${esc(ver)}版
