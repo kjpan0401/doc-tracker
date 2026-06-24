@@ -254,6 +254,13 @@
       <h3>⚠️ 即將到期 / 已逾期</h3>
       <div id="urgent-list"></div>
     </div>
+    <div class="card">
+      <h3>✅ 已核定文件</h3>
+      <div class="filter-bar" style="margin-bottom:8px">
+        <input type="text" id="approved-search" placeholder="搜尋已核定文件..." style="flex:1;min-width:150px;" oninput="renderDashboard()">
+      </div>
+      <div id="approved-list"></div>
+    </div>
   </div>
 
   <!-- Package List -->
@@ -1044,22 +1051,25 @@ function showRoundDetail(pkgId, roundId) {
 
 // === Dashboard ===
 function renderDashboard() {
-  let totalRounds = 0, completed = 0, overdue = 0, nearDue = 0;
+  // 按區段統計文件數
+  const sectionCounts = {};
+  SECTIONS.forEach(s => sectionCounts[s] = 0);
+  const approvedCount = packages.filter(p => p.approved === '已核定').length;
+  let overdue = 0, nearDue = 0;
   const urgentItems = [];
   packages.forEach(p => {
+    const sec = p.section || '其他需送審的文件';
+    if (sectionCounts[sec] !== undefined) sectionCounts[sec]++;
     p.rounds.forEach(r => {
-      totalRounds++;
       const s = roundStatus(r,p);
-      if (s === 'completed') completed++;
       if (s === 'overdue') { overdue++; urgentItems.push({pkg:p, round:r, status:s}); }
       if (s === 'near-due') { nearDue++; urgentItems.push({pkg:p, round:r, status:s}); }
     });
   });
 
   document.getElementById('stats').innerHTML = `
-    <div class="stat-card"><div class="stat-num">${packages.length}</div><div class="stat-label">文件數</div></div>
-    <div class="stat-card"><div class="stat-num">${totalRounds}</div><div class="stat-label">送審紀錄</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:var(--success)">${completed}</div><div class="stat-label">已完成</div></div>
+    ${SECTIONS.map(sec => `<div class="stat-card"><div class="stat-num">${sectionCounts[sec]}</div><div class="stat-label">${esc(sec)}</div></div>`).join('')}
+    <div class="stat-card"><div class="stat-num" style="color:var(--success)">${approvedCount}</div><div class="stat-label">已核定</div></div>
     <div class="stat-card"><div class="stat-num" style="color:var(--warning)">${nearDue}</div><div class="stat-label">即將到期</div></div>
     <div class="stat-card"><div class="stat-num" style="color:var(--danger)">${overdue}</div><div class="stat-label">已逾期</div></div>
   `;
@@ -1083,6 +1093,28 @@ function renderDashboard() {
             ${item.round.recvNo ? `<span>📥 ${esc(item.round.recvNo)}</span>` : ''}
             ${item.round.pcmDate ? `<span>PCM：${item.round.pcmDate}（${remainText(item.round.pcmDate)}）</span>` : ''}
             ${item.round.contractDate ? `<span>契約：${item.round.contractDate}（${remainText(item.round.contractDate)}）</span>` : ''}
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // 已核定文件列表
+  const approvedSearch = (document.getElementById('approved-search')?.value || '').trim().toLowerCase();
+  const approvedPkgs = packages.filter(p => p.approved === '已核定' && (!approvedSearch || p.name.toLowerCase().includes(approvedSearch) || (p.number||'').toLowerCase().includes(approvedSearch)));
+  const approvedContainer = document.getElementById('approved-list');
+  if (approvedPkgs.length === 0) {
+    approvedContainer.innerHTML = '<p style="color:var(--text-light);font-size:.9rem;padding:8px 0">' + (approvedSearch ? '沒有符合的已核定文件' : '目前沒有已核定的文件') + '</p>';
+  } else {
+    approvedContainer.innerHTML = approvedPkgs.map(p => `
+      <div class="round-item" style="border-left:3px solid var(--success);cursor:default">
+        <div>
+          <div class="round-title">${esc(p.name)} ${p.number ? '<span style="color:var(--text-light);font-size:.8rem">'+esc(p.number)+'</span>' : ''} <span class="badge badge-green">已核定</span></div>
+          <div class="round-meta">
+            <span>📂 ${esc(p.section || '—')}</span>
+            ${p.person ? '<span>👤 '+esc(p.person)+'</span>' : ''}
+            <span>共 ${p.rounds.length} 筆送審紀錄</span>
+            ${p.payment ? '<span>'+esc(p.payment)+'</span>' : ''}
           </div>
         </div>
       </div>
