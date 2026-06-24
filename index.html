@@ -603,6 +603,8 @@ function versionOrder(v) {
 }
 
 function roundStatus(round, pkg) {
+  // 已核定文件，所有版次自動標為已完成
+  if (pkg && pkg.approved === '已核定') return 'completed';
   // 如果有更新的版次存在，此版次自動標為已完成
   if (pkg && round.version) {
     const versions = [...new Set(pkg.rounds.map(r => r.version).filter(Boolean))];
