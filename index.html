@@ -586,7 +586,13 @@ function remainText(dateStr) {
   const txt = r >= 0 ? '剩餘' + r + '天' : '已逾期' + Math.abs(r) + '天';
   return `<span class="remain-text">${txt}</span>`;
 }
-function roundStatus(round) {
+function roundStatus(round, pkg) {
+  // 如果有更新的版次存在，此版次自動標為已完成
+  if (pkg && round.version) {
+    const versions = [...new Set(pkg.rounds.map(r => r.version).filter(Boolean))].sort();
+    const currentIdx = versions.indexOf(round.version);
+    if (currentIdx >= 0 && currentIdx < versions.length - 1) return 'completed';
+  }
   if (round.tasks && round.tasks.length > 0 && round.tasks.every(t => t.done)) return 'completed';
   const eff = round.pcmDate || round.contractDate || round.recvDate || round.receiveDate;
   if (!eff) return 'pending';
@@ -879,7 +885,7 @@ function renderPkgList() {
 function renderPkgCard(p) {
     const isOpen = openPkgs[p.id];
     const roundCount = p.rounds.length;
-    const urgentCount = p.rounds.filter(r => { const s = roundStatus(r); return s === 'overdue' || s === 'near-due'; }).length;
+    const urgentCount = p.rounds.filter(r => { const s = roundStatus(r,p); return s === 'overdue' || s === 'near-due'; }).length;
 
   return `
       <div class="pkg-card">
@@ -913,7 +919,7 @@ function renderPkgCard(p) {
                   </div>
                   <div class="timeline">
                   ${rounds.map(r => {
-                    const s = roundStatus(r);
+                    const s = roundStatus(r,p);
                     return `
                       <div class="timeline-item ${s === 'completed' ? 'done' : s === 'overdue' ? 'overdue' : ''}">
                         <div class="round-item" onclick="event.stopPropagation();showRoundDetail('${p.id}','${r.id}')">
@@ -955,7 +961,7 @@ function showRoundDetail(pkgId, roundId) {
   const pkg = packages.find(p => p.id === pkgId);
   const r = pkg?.rounds.find(x => x.id === roundId);
   if (!r) return;
-  const s = roundStatus(r);
+  const s = roundStatus(r,pkg);
   const tasksHtml = r.tasks && r.tasks.length > 0
     ? r.tasks.map((t, i) => `
         <div class="checklist-item">
@@ -1018,7 +1024,7 @@ function renderDashboard() {
   packages.forEach(p => {
     p.rounds.forEach(r => {
       totalRounds++;
-      const s = roundStatus(r);
+      const s = roundStatus(r,p);
       if (s === 'completed') completed++;
       if (s === 'overdue') { overdue++; urgentItems.push({pkg:p, round:r, status:s}); }
       if (s === 'near-due') { nearDue++; urgentItems.push({pkg:p, round:r, status:s}); }
@@ -1138,7 +1144,7 @@ function renderPaymentSummary() {
                             ${rounds[0].reviewLevel ? '<span class="badge badge-warning" style="margin-left:4px">審查'+esc(rounds[0].reviewLevel)+'</span>' : ''}
                           </div>
                           ${rounds.map(r => {
-                            const s = roundStatus(r);
+                            const s = roundStatus(r,p);
                             return `
                               <div style="margin:6px 0 6px 16px;padding:10px 14px;background:white;border-radius:8px;border-left:3px solid ${s==='completed'?'var(--success)':s==='overdue'?'var(--danger)':'var(--primary)'}">
                                 <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:4px">
