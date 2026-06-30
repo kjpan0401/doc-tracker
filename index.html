@@ -288,6 +288,13 @@
   <div class="tab-content" id="tab-docnumbers">
     <div class="filter-bar">
       <input type="text" id="docnum-search" placeholder="搜尋文號、文件名稱..." style="flex:1;min-width:150px;" oninput="renderDocNumbers()">
+      <select id="docnum-section" onchange="renderDocNumbers()">
+        <option value="all">全部區段</option>
+        <option value="第一區段">第一區段</option>
+        <option value="第二區段">第二區段</option>
+        <option value="第三區段">第三區段</option>
+        <option value="其他需送審的文件">其他需送審的文件</option>
+      </select>
     </div>
     <div id="docnum-list"></div>
   </div>
@@ -1360,21 +1367,31 @@ function renderPaymentSummary() {
 }
 
 // === Document Number Lookup ===
+let openDocNumCards = {};
+
+function toggleDocNumCard(id) {
+  openDocNumCards[id] = !openDocNumCards[id];
+  renderDocNumbers();
+}
+
 function renderDocNumbers() {
   const search = (document.getElementById('docnum-search').value || '').trim().toLowerCase();
+  const sectionFilter = document.getElementById('docnum-section').value;
   const container = document.getElementById('docnum-list');
 
-  if (!search) {
-    container.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><p>輸入文件名稱關鍵字搜尋，例如「定線設計計算書」</p></div>';
+  if (!search && sectionFilter === 'all') {
+    container.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><p>輸入文件名稱關鍵字搜尋，或選擇區段篩選</p></div>';
     return;
   }
 
-  const matchedPkgs = packages.filter(p =>
-    p.name.toLowerCase().includes(search) || (p.number || '').toLowerCase().includes(search)
-  );
+  const matchedPkgs = packages.filter(p => {
+    const nameHit = !search || p.name.toLowerCase().includes(search) || (p.number || '').toLowerCase().includes(search);
+    const sectionHit = sectionFilter === 'all' || (p.section || '其他需送審的文件') === sectionFilter;
+    return nameHit && sectionHit;
+  });
 
   if (matchedPkgs.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><p>找不到符合「' + esc(search) + '」的文件</p></div>';
+    container.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><p>找不到符合條件的文件</p></div>';
     return;
   }
 
@@ -1388,49 +1405,57 @@ function renderDocNumbers() {
     // 找出最新（最近進版時間）的紀錄
     const latestRound = sortedRounds.length > 0 ? sortedRounds[sortedRounds.length - 1] : null;
     const latestEff = latestRound ? (latestRound.pcmDate || latestRound.contractDate) : null;
+    const isOpen = openDocNumCards[p.id] !== false; // 預設展開
 
     return `
-      <div class="card" style="margin-bottom:16px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:4px">
-          <h3 style="margin:0">${esc(p.name)} ${p.number ? '<span style="color:var(--text-light);font-size:.85rem;font-weight:400">'+esc(p.number)+'</span>' : ''}</h3>
-          ${p.approved === '已核定' ? '<span class="badge badge-green">已核定</span>' : ''}
-        </div>
-        <div style="font-size:.8rem;color:var(--text-light);margin-bottom:10px">
-          📂 ${esc(p.section || '—')} ${p.person ? '｜ 👤 '+esc(p.person) : ''} ｜ 共 ${sortedRounds.length} 筆公文紀錄
-        </div>
-        ${latestEff ? `
-          <div class="date-result show ${remainDays(latestEff) < 0 ? 'danger' : remainDays(latestEff) <= 7 ? 'warn' : 'ok'}" style="margin-bottom:12px">
-            🎯 最近進版時間：${latestEff}（${remainText(latestEff)}）
+      <div class="card" style="margin-bottom:12px;padding:0;overflow:hidden">
+        <div style="padding:14px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;user-select:none" onclick="toggleDocNumCard('${p.id}')">
+          <div>
+            <h3 style="margin:0;display:inline">${esc(p.name)}</h3>
+            ${p.number ? ' <span style="color:var(--text-light);font-size:.85rem">'+esc(p.number)+'</span>' : ''}
+            ${p.approved === '已核定' ? ' <span class="badge badge-green">已核定</span>' : ''}
+            <div style="font-size:.8rem;color:var(--text-light);margin-top:4px">
+              📂 ${esc(p.section || '—')} ${p.person ? '｜ 👤 '+esc(p.person) : ''} ｜ 共 ${sortedRounds.length} 筆公文紀錄
+            </div>
           </div>
-        ` : ''}
-        ${sortedRounds.length === 0 ? '<p style="color:var(--text-light);font-size:.9rem">尚無公文紀錄</p>' : `
-          <div class="timeline">
-            ${sortedRounds.map((r, idx) => {
-              const isLatest = latestRound && r.id === latestRound.id;
-              const s = roundStatus(r, p);
-              return `
-                <div class="timeline-item ${s === 'completed' && !isLatest ? 'done' : s === 'overdue' ? 'overdue' : ''}">
-                  <div class="round-item" onclick="showRoundDetail('${p.id}','${r.id}')" style="${isLatest ? 'border-color:var(--primary);box-shadow:0 0 0 2px rgba(37,99,235,.15)' : ''}">
-                    <div style="width:100%">
-                      <div class="round-title">
-                        <span class="badge badge-info">${esc(r.version || '—')}版</span>
-                        <span class="badge ${r.type==='抽換'?'badge-warning':r.type==='外審'?'badge-purple':r.type==='會議'?'badge-gray':'badge-info'}">${esc(r.type || '進版')}</span>
-                        ${r.sendNo ? `<span>📤 ${esc(r.sendNo)}</span>` : ''}
-                        ${r.recvNo ? `<span>📥 ${esc(r.recvNo)}</span>` : ''}
-                        ${isLatest ? '<span class="badge badge-purple">最新</span>' : statusBadge(s)}
-                      </div>
-                      <div class="round-meta">
-                        ${r.sendDate ? `<span>📤 發文日：${r.sendDate}</span>` : ''}
-                        ${r.recvDate ? `<span>📥 收文日：${r.recvDate}</span>` : ''}
-                        ${r.pcmDate ? `<span>PCM：${r.pcmDate}${isLatest ? '（'+remainText(r.pcmDate)+'）' : ''}</span>` : ''}
-                        ${r.contractDate ? `<span>契約：${r.contractDate}${isLatest ? '（'+remainText(r.contractDate)+'）' : ''}</span>` : ''}
+          <span class="expand-icon ${isOpen?'open':''}">▶</span>
+        </div>
+        <div style="padding:${isOpen ? '0 16px 16px' : '0'};display:${isOpen ? 'block' : 'none'}">
+          ${latestEff ? `
+            <div class="date-result show ${remainDays(latestEff) < 0 ? 'danger' : remainDays(latestEff) <= 7 ? 'warn' : 'ok'}" style="margin-bottom:12px">
+              🎯 最近進版時間：${latestEff}（${remainText(latestEff)}）
+            </div>
+          ` : ''}
+          ${sortedRounds.length === 0 ? '<p style="color:var(--text-light);font-size:.9rem">尚無公文紀錄</p>' : `
+            <div class="timeline">
+              ${sortedRounds.map((r, idx) => {
+                const isLatest = latestRound && r.id === latestRound.id;
+                const s = roundStatus(r, p);
+                return `
+                  <div class="timeline-item ${s === 'completed' && !isLatest ? 'done' : s === 'overdue' ? 'overdue' : ''}">
+                    <div class="round-item" style="cursor:default;${isLatest ? 'border-color:var(--primary);box-shadow:0 0 0 2px rgba(37,99,235,.15)' : ''}">
+                      <div style="width:100%">
+                        <div class="round-title">
+                          <span class="badge badge-info">${esc(r.version || '—')}版</span>
+                          <span class="badge ${r.type==='抽換'?'badge-warning':r.type==='外審'?'badge-purple':r.type==='會議'?'badge-gray':'badge-info'}">${esc(r.type || '進版')}</span>
+                          ${r.sendNo ? `<span>📤 ${esc(r.sendNo)}</span>` : ''}
+                          ${r.recvNo ? `<span>📥 ${esc(r.recvNo)}</span>` : ''}
+                          ${isLatest ? '<span class="badge badge-purple">最新</span>' : statusBadge(s)}
+                          <button class="btn btn-outline btn-sm" style="margin-left:auto;padding:2px 8px;font-size:.75rem" onclick="showRoundDetail('${p.id}','${r.id}')">詳情</button>
+                        </div>
+                        <div class="round-meta">
+                          ${r.sendDate ? `<span>📤 發文日：${r.sendDate}</span>` : ''}
+                          ${r.recvDate ? `<span>📥 收文日：${r.recvDate}</span>` : ''}
+                          ${r.pcmDate ? `<span>PCM：${r.pcmDate}${isLatest ? '（'+remainText(r.pcmDate)+'）' : ''}</span>` : ''}
+                          ${r.contractDate ? `<span>契約：${r.contractDate}${isLatest ? '（'+remainText(r.contractDate)+'）' : ''}</span>` : ''}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>`;
-            }).join('')}
-          </div>
-        `}
+                  </div>`;
+              }).join('')}
+            </div>
+          `}
+        </div>
       </div>`;
   }).join('');
 }
