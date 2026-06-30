@@ -1543,7 +1543,11 @@ async function exportWordDoc() {
       if (dateParas.length === 0) dateParas.push(cellPara('-'));
 
       // 備註(附件)：無逾期/已逾期 + 附件留空給使用者自行填寫
-      const remarkText = effDate ? (remainDays(effDate) < 0 ? '(已逾期' + Math.abs(remainDays(effDate)) + '天)' : '(無逾期)') : '-';
+      let remarkText = '-';
+      if (effDate && r.recvDate) {
+        const diffDays = Math.round((new Date(effDate) - new Date(r.recvDate)) / 86400000);
+        remarkText = diffDays < 0 ? '(已逾期' + Math.abs(diffDays) + '天)' : '(無逾期)';
+      }
       const remarkParas = [cellPara(remarkText, { center: true }), cellPara('', { center: true })];
 
       rows.push(new TableRow({
