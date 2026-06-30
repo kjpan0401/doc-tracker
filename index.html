@@ -366,6 +366,15 @@
           <input type="text" id="round-version" required placeholder="例：A、B、C">
         </div>
         <div class="form-group">
+          <label>紀錄類型</label>
+          <select id="round-type">
+            <option value="進版">進版</option>
+            <option value="抽換">抽換</option>
+            <option value="外審">外審</option>
+            <option value="會議">會議</option>
+          </select>
+        </div>
+        <div class="form-group">
           <label>審查等級</label>
           <select id="round-review-level">
             <option value="">請選擇</option>
@@ -374,10 +383,10 @@
             <option value="C">C</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>負責人</label>
-          <input type="text" id="round-person" placeholder="例：王小明">
-        </div>
+      </div>
+      <div class="form-group">
+        <label>負責人</label>
+        <input type="text" id="round-person" placeholder="例：王小明">
       </div>
 
       <div class="card" style="background:var(--bg);margin-bottom:14px">
@@ -746,6 +755,7 @@ function editRound(pkgId, roundId) {
   document.getElementById('round-pkg-id').value = pkgId;
   document.getElementById('round-edit-id').value = roundId;
   document.getElementById('round-version').value = round.version || '';
+  document.getElementById('round-type').value = round.type || '進版';
   document.getElementById('round-review-level').value = round.reviewLevel || '';
   document.getElementById('round-person').value = round.person || '';
   document.getElementById('round-send-no').value = round.sendNo || '';
@@ -783,6 +793,7 @@ document.getElementById('round-form').addEventListener('submit', e => {
   const round = {
     id: editId || Date.now().toString(),
     version,
+    type: document.getElementById('round-type').value,
     reviewLevel: document.getElementById('round-review-level').value,
     person: document.getElementById('round-person').value.trim(),
     sendNo: document.getElementById('round-send-no').value.trim(),
@@ -941,42 +952,40 @@ function renderPkgCard(p) {
           </div>
           ${roundCount === 0 ? '<p style="color:var(--text-light);font-size:.9rem;padding:8px 0">尚無送審紀錄</p>' :
             (() => {
-              const grouped = {};
-              p.rounds.forEach(r => { const v = r.version || '未分類'; if (!grouped[v]) grouped[v] = []; grouped[v].push(r); });
-              return Object.entries(grouped).sort((a,b) => versionOrder(a[0]) - versionOrder(b[0])).map(([ver, rounds]) => `
-                <div style="margin-bottom:16px">
-                  <div style="font-weight:600;font-size:.95rem;margin-bottom:8px;padding:6px 12px;background:var(--bg);border-radius:6px;border-left:3px solid var(--primary)">
-                    📁 ${esc(ver)}版
-                    ${rounds[0].reviewLevel ? `<span class="badge badge-warning" style="margin-left:6px">審查${esc(rounds[0].reviewLevel)}</span>` : ''}
-                  </div>
-                  <div class="timeline">
-                  ${rounds.map(r => {
-                    const s = roundStatus(r,p);
-                    return `
-                      <div class="timeline-item ${s === 'completed' ? 'done' : s === 'overdue' ? 'overdue' : ''}">
-                        <div class="round-item" onclick="event.stopPropagation();showRoundDetail('${p.id}','${r.id}')">
-                          <div style="width:100%">
-                            <div class="round-title">
-                              ${r.sendNo ? `<span>📤 發文：${esc(r.sendNo)}</span>` : ''}
-                              ${r.recvNo ? `<span>📥 收文：${esc(r.recvNo)}</span>` : ''}
-                              ${!r.sendNo && !r.recvNo ? `<span>${esc(ver)}版紀錄</span>` : ''}
-                              ${statusBadge(s)}
-                            </div>
-                            <div class="round-meta">
-                              ${r.person ? `<span>👤 ${esc(r.person)}</span>` : ''}
-                              ${r.sendDate ? `<span>📤 發文日：${r.sendDate}</span>` : ''}
-                              ${r.recvDate ? `<span>📥 收文日：${r.recvDate}</span>` : ''}
-                              ${r.pcmDate ? `<span>PCM：${r.pcmDate}${s !== 'completed' ? '（'+remainText(r.pcmDate)+'）' : ''}</span>` : ''}
-                              ${r.contractDate ? `<span>契約：${r.contractDate}${s !== 'completed' ? '（'+remainText(r.contractDate)+'）' : ''}</span>` : ''}
-                            </div>
-                            ${taskProgress(r.tasks)}
-                          </div>
+              const sortedRounds = [...p.rounds].sort((a, b) => {
+                const da = a.recvDate || a.sendDate || '';
+                const db = b.recvDate || b.sendDate || '';
+                return da.localeCompare(db);
+              });
+              const typeBadge = { '進版':'badge-info', '抽換':'badge-warning', '外審':'badge-purple', '會議':'badge-gray' };
+              return `<div class="timeline">` + sortedRounds.map(r => {
+                const s = roundStatus(r,p);
+                const ver = r.version || '未分類';
+                const type = r.type || '進版';
+                return `
+                  <div class="timeline-item ${s === 'completed' ? 'done' : s === 'overdue' ? 'overdue' : ''}">
+                    <div class="round-item" onclick="event.stopPropagation();showRoundDetail('${p.id}','${r.id}')">
+                      <div style="width:100%">
+                        <div class="round-title">
+                          <span class="badge badge-info">${esc(ver)}版</span>
+                          <span class="badge ${typeBadge[type] || 'badge-info'}">${esc(type)}</span>
+                          ${r.sendNo ? `<span>📤 發文：${esc(r.sendNo)}</span>` : ''}
+                          ${r.recvNo ? `<span>📥 收文：${esc(r.recvNo)}</span>` : ''}
+                          ${statusBadge(s)}
                         </div>
-                      </div>`;
-                  }).join('')}
-                  </div>
-                </div>
-              `).join('');
+                        <div class="round-meta">
+                          ${r.reviewLevel ? `<span>審查${esc(r.reviewLevel)}</span>` : ''}
+                          ${r.person ? `<span>👤 ${esc(r.person)}</span>` : ''}
+                          ${r.sendDate ? `<span>📤 發文日：${r.sendDate}</span>` : ''}
+                          ${r.recvDate ? `<span>📥 收文日：${r.recvDate}</span>` : ''}
+                          ${r.pcmDate ? `<span>PCM：${r.pcmDate}${s !== 'completed' ? '（'+remainText(r.pcmDate)+'）' : ''}</span>` : ''}
+                          ${r.contractDate ? `<span>契約：${r.contractDate}${s !== 'completed' ? '（'+remainText(r.contractDate)+'）' : ''}</span>` : ''}
+                        </div>
+                        ${taskProgress(r.tasks)}
+                      </div>
+                    </div>
+                  </div>`;
+              }).join('') + `</div>`;
             })()
           }
         </div>
@@ -1008,7 +1017,7 @@ function showRoundDetail(pkgId, roundId) {
       ${statusBadge(s)}
     </div>
     <p style="color:var(--text-light);margin-bottom:16px;font-size:.85rem">
-      ${r.version ? '版次：'+esc(r.version) : ''}${r.reviewLevel ? ' ｜ 審查等級：'+esc(r.reviewLevel) : ''}${r.person ? ' ｜ 負責人：'+esc(r.person) : ''}
+      ${r.version ? '版次：'+esc(r.version) : ''}${r.type ? ' ｜ 類型：'+esc(r.type) : ''}${r.reviewLevel ? ' ｜ 審查等級：'+esc(r.reviewLevel) : ''}${r.person ? ' ｜ 負責人：'+esc(r.person) : ''}
     </p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
       <div class="card" style="margin:0;border-left:3px solid var(--primary)">
@@ -1026,12 +1035,12 @@ function showRoundDetail(pkgId, roundId) {
       <div class="card" style="margin:0">
         <div style="font-size:.8rem;color:var(--text-light)">PCM規定時間</div>
         <div style="font-weight:600;font-size:1.1rem">${r.pcmDate || '—'}</div>
-        ${r.pcmDate ? `<div style="font-size:.8rem;margin-top:4px">${remainText(r.pcmDate)}</div>` : ''}
+        ${r.pcmDate && s !== 'completed' ? `<div style="font-size:.8rem;margin-top:4px">${remainText(r.pcmDate)}</div>` : ''}
       </div>
       <div class="card" style="margin:0">
         <div style="font-size:.8rem;color:var(--text-light)">契約提送時間</div>
         <div style="font-weight:600;font-size:1.1rem">${r.contractDate || '—'}</div>
-        ${r.contractDate ? `<div style="font-size:.8rem;margin-top:4px">${remainText(r.contractDate)}</div>` : ''}
+        ${r.contractDate && s !== 'completed' ? `<div style="font-size:.8rem;margin-top:4px">${remainText(r.contractDate)}</div>` : ''}
       </div>
     </div>
     ${r.ivv ? `<div class="card" style="margin-bottom:12px"><div style="font-size:.8rem;color:var(--text-light)">IVV意見</div><div style="font-weight:600;margin-top:4px">${esc(r.ivv)}</div></div>` : ''}
