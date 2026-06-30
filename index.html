@@ -222,6 +222,7 @@
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -233,7 +234,8 @@
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
       <button onclick="exportData()" style="padding:6px 12px;border:1px solid rgba(255,255,255,.4);background:transparent;color:white;border-radius:6px;cursor:pointer;font-size:.8rem;font-family:inherit">📤 匯出備份</button>
-      <label style="padding:6px 12px;border:1px solid rgba(255,255,255,.4);background:transparent;color:white;border-radius:6px;cursor:pointer;font-size:.8rem;font-family:inherit">📥 匯入資料<input type="file" accept=".json" onchange="importData(event)" style="display:none"></label>
+      <label style="padding:6px 12px;border:1px solid rgba(255,255,255,.4);background:transparent;color:white;border-radius:6px;cursor:pointer;font-size:.8rem;font-family:inherit">📥 匯入備份<input type="file" accept=".json" onchange="importData(event)" style="display:none"></label>
+      <label style="padding:6px 12px;border:1px solid rgba(255,255,255,.4);background:transparent;color:white;border-radius:6px;cursor:pointer;font-size:.8rem;font-family:inherit">📊 匯入Excel<input type="file" accept=".xlsx,.xls" onchange="importExcel(event)" style="display:none"></label>
       <span id="sync-status" style="font-size:.75rem;padding:4px 8px;border-radius:4px"></span>
     </div>
   </div>
@@ -244,6 +246,7 @@
     <button class="tab-btn active" data-tab="dashboard">總覽</button>
     <button class="tab-btn" data-tab="packages">文件列表</button>
     <button class="tab-btn" data-tab="payment">請款總表</button>
+    <button class="tab-btn" data-tab="docnumbers">文號查詢</button>
     <button class="tab-btn" data-tab="add-pkg">新增文件</button>
   </div>
 
@@ -279,6 +282,14 @@
   <!-- Payment Summary -->
   <div class="tab-content" id="tab-payment">
     <div id="payment-summary"></div>
+  </div>
+
+  <!-- Document Number Lookup -->
+  <div class="tab-content" id="tab-docnumbers">
+    <div class="filter-bar">
+      <input type="text" id="docnum-search" placeholder="搜尋文號、文件名稱..." style="flex:1;min-width:150px;" oninput="renderDocNumbers()">
+    </div>
+    <div id="docnum-list"></div>
   </div>
 
   <!-- Add Package -->
@@ -570,6 +581,107 @@ function exportData() {
   URL.revokeObjectURL(url);
 }
 
+// 匯入 Excel（每列代表一筆送審紀錄，依「文件名稱」+「文件編號」自動歸到同一份文件）
+const EXCEL_FIELD_MAP = {
+  '區段': 'section', '文件名稱': 'name', '名稱': 'name', '文件編號': 'number', '編號': 'number',
+  '負責人': 'person', '版次': 'version', '類型': 'type', '紀錄類型': 'type',
+  '審查等級': 'reviewLevel', '發文文號': 'sendNo', '發文日期': 'sendDate',
+  '收文文號': 'recvNo', '收文日期': 'recvDate', 'PCM規定天數': 'pcmDays', 'PCM天數': 'pcmDays',
+  '契約提送天數': 'contractDays', '契約天數': 'contractDays', 'IVV意見': 'ivv',
+  '請款狀態': 'payment', '請款日期': 'paymentDate', '第幾期請款': 'paymentPeriod', '請款期數': 'paymentPeriod',
+  '核定狀態': 'approved', '備註': 'note'
+};
+
+function excelDateToStr(v) {
+  if (!v) return '';
+  if (typeof v === 'number') {
+    const d = XLSX.SSF.parse_date_code(v);
+    return d.y + '-' + String(d.m).padStart(2,'0') + '-' + String(d.d).padStart(2,'0');
+  }
+  return String(v).trim();
+}
+
+function importExcel(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'binary' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      if (rows.length === 0) { alert('Excel 沒有資料'); return; }
+
+      // 將欄位名稱轉換為內部欄位
+      const mapped = rows.map(row => {
+        const obj = {};
+        Object.keys(row).forEach(key => {
+          const field = EXCEL_FIELD_MAP[key.trim()];
+          if (field) obj[field] = row[key];
+        });
+        return obj;
+      });
+
+      if (!confirm('將匯入 ' + mapped.length + ' 筆資料，會新增為新文件（不會覆蓋現有資料），確定繼續嗎？')) { event.target.value=''; return; }
+
+      mapped.forEach(row => {
+        const name = String(row.name || '').trim();
+        if (!name) return;
+        const number = String(row.number || '').trim();
+        let pkg = packages.find(p => p.name === name && (p.number || '') === number);
+        if (!pkg) {
+          pkg = {
+            id: Date.now().toString() + Math.random().toString(36).slice(2,6),
+            section: String(row.section || '').trim() || '其他需送審的文件',
+            name, number,
+            person: String(row.person || '').trim(),
+            payment: String(row.payment || '').trim(),
+            paymentDate: excelDateToStr(row.paymentDate),
+            paymentPeriod: String(row.paymentPeriod || '').trim(),
+            approved: String(row.approved || '').trim(),
+            note: '',
+            rounds: [],
+            createdAt: new Date().toISOString()
+          };
+          packages.push(pkg);
+        }
+        const recvDate = excelDateToStr(row.recvDate);
+        const pcmDays = parseInt(row.pcmDays);
+        const contractDays = parseInt(row.contractDays);
+        if (row.version || row.sendNo || row.recvNo) {
+          pkg.rounds.push({
+            id: Date.now().toString() + Math.random().toString(36).slice(2,6),
+            version: String(row.version || '').trim(),
+            type: String(row.type || '進版').trim(),
+            reviewLevel: String(row.reviewLevel || '').trim(),
+            person: String(row.person || '').trim(),
+            sendNo: String(row.sendNo || '').trim(),
+            sendDate: excelDateToStr(row.sendDate),
+            recvNo: String(row.recvNo || '').trim(),
+            recvDate,
+            pcmDays: isNaN(pcmDays) ? null : pcmDays,
+            pcmDate: recvDate && !isNaN(pcmDays) ? fmtDate(addDaysToDate(recvDate, pcmDays)) : '',
+            contractDays: isNaN(contractDays) ? null : contractDays,
+            contractDate: recvDate && !isNaN(contractDays) ? fmtDate(addDaysToDate(recvDate, contractDays)) : '',
+            ivv: String(row.ivv || '').trim(),
+            note: String(row.note || '').trim(),
+            tasks: []
+          });
+        }
+      });
+
+      save();
+      renderDashboard();
+      renderPkgList();
+      alert('匯入完成！');
+    } catch(err) {
+      alert('Excel 讀取失敗：' + err.message);
+    }
+    event.target.value = '';
+  };
+  reader.readAsBinaryString(file);
+}
+
 // 匯入資料
 function importData(event) {
   const file = event.target.files[0];
@@ -665,6 +777,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     if (btn.dataset.tab === 'dashboard') renderDashboard();
     if (btn.dataset.tab === 'packages') renderPkgList();
     if (btn.dataset.tab === 'payment') renderPaymentSummary();
+    if (btn.dataset.tab === 'docnumbers') renderDocNumbers();
   });
 });
 function switchTab(name) {
@@ -674,6 +787,7 @@ function switchTab(name) {
   if (name === 'packages') renderPkgList();
   if (name === 'dashboard') renderDashboard();
   if (name === 'payment') renderPaymentSummary();
+  if (name === 'docnumbers') renderDocNumbers();
 }
 
 // === Package CRUD ===
@@ -1243,6 +1357,65 @@ function renderPaymentSummary() {
   });
 
   container.innerHTML = html;
+}
+
+// === Document Number Lookup ===
+function renderDocNumbers() {
+  const search = (document.getElementById('docnum-search').value || '').trim().toLowerCase();
+  const rows = [];
+  packages.forEach(p => {
+    p.rounds.forEach(r => {
+      if (!r.sendNo && !r.recvNo) return;
+      const hit = !search ||
+        (r.sendNo || '').toLowerCase().includes(search) ||
+        (r.recvNo || '').toLowerCase().includes(search) ||
+        p.name.toLowerCase().includes(search) ||
+        (p.number || '').toLowerCase().includes(search);
+      if (hit) rows.push({ pkg: p, round: r });
+    });
+  });
+
+  rows.sort((a, b) => {
+    const da = a.round.recvDate || a.round.sendDate || '';
+    const db = b.round.recvDate || b.round.sendDate || '';
+    return db.localeCompare(da);
+  });
+
+  const container = document.getElementById('docnum-list');
+  if (rows.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><p>' + (search ? '沒有符合的文號' : '尚無發文/收文文號資料') + '</p></div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="card" style="padding:0;overflow:hidden;overflow-x:auto">
+      <table class="pay-table">
+        <tr>
+          <th>文件名稱</th>
+          <th>區段</th>
+          <th>版次</th>
+          <th>類型</th>
+          <th>發文文號</th>
+          <th>發文日期</th>
+          <th>收文文號</th>
+          <th>收文日期</th>
+        </tr>
+        ${rows.map(({pkg, round: r}) => `
+          <tr style="cursor:pointer" onclick="showRoundDetail('${pkg.id}','${r.id}')">
+            <td style="font-weight:500">${esc(pkg.name)}${pkg.number ? ' <span style="color:var(--text-light);font-size:.8rem">'+esc(pkg.number)+'</span>' : ''}</td>
+            <td>${esc(pkg.section || '—')}</td>
+            <td>${esc(r.version || '—')}</td>
+            <td>${esc(r.type || '進版')}</td>
+            <td>${r.sendNo ? esc(r.sendNo) : '—'}</td>
+            <td>${r.sendDate || '—'}</td>
+            <td>${r.recvNo ? esc(r.recvNo) : '—'}</td>
+            <td>${r.recvDate || '—'}</td>
+          </tr>
+        `).join('')}
+      </table>
+    </div>
+    <p style="color:var(--text-light);font-size:.85rem;margin-top:8px">共 ${rows.length} 筆文號紀錄</p>
+  `;
 }
 
 // Filter
