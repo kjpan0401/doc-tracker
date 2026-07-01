@@ -1096,8 +1096,11 @@ function showRoundDetail(pkgId, roundId) {
       </div>
       <div class="card" style="margin:0;border-left:3px solid #7c3aed">
         <div style="font-size:.8rem;color:var(--text-light)">📥 收文文號</div>
-        <div style="font-weight:600;font-size:1rem;margin-top:4px">${r.recvNo ? esc(r.recvNo) : '—'}</div>
-        ${r.recvDate ? `<div style="font-size:.8rem;color:var(--text-light);margin-top:4px">日期：${r.recvDate}</div>` : ''}
+        ${(r.recvList && r.recvList.length > 0 ? r.recvList : (r.recvNo||r.recvDate ? [{no:r.recvNo||'',date:r.recvDate||''}] : [])).map(e=>`
+          <div style="margin-top:4px">
+            ${e.no ? `<div style="font-weight:600;font-size:1rem">${esc(e.no)}</div>` : ''}
+            ${e.date ? `<div style="font-size:.8rem;color:var(--text-light)">日期：${e.date}</div>` : ''}
+          </div>`).join('') || '<div style="font-weight:600;font-size:1rem;margin-top:4px">—</div>'}
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
@@ -1284,8 +1287,8 @@ function renderPaymentSummary() {
                               <div style="margin:6px 0 6px 16px;padding:10px 14px;background:white;border-radius:8px;border-left:3px solid ${s==='completed'?'var(--success)':s==='overdue'?'var(--danger)':'var(--primary)'}">
                                 <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:4px">
                                   ${r.sendNo ? '<span style="font-weight:500">📤 '+esc(r.sendNo)+'</span>' : ''}
-                                  ${r.recvNo ? '<span style="font-weight:500">📥 '+esc(r.recvNo)+'</span>' : ''}
-                                  ${!r.sendNo && !r.recvNo ? '<span style="font-weight:500">'+esc(ver)+'版紀錄</span>' : ''}
+                                  ${(r.recvList && r.recvList.length > 0 ? r.recvList : (r.recvNo ? [{no:r.recvNo}] : [])).map(e=>e.no?'<span style="font-weight:500">📥 '+esc(e.no)+'</span>':'').join('')}
+                                  ${!r.sendNo && !(r.recvList&&r.recvList.some(e=>e.no)) && !r.recvNo ? '<span style="font-weight:500">'+esc(ver)+'版紀錄</span>' : ''}
                                   ${statusBadge(s)}
                                   ${r.ivv ? '<span class="badge badge-purple">IVV：'+esc(r.ivv)+'</span>' : ''}
                                 </div>
