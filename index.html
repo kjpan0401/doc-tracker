@@ -426,10 +426,6 @@
           <label>負責人</label>
           <input type="text" id="round-person" placeholder="例：王小明">
         </div>
-        <div class="form-group">
-          <label>函文單位</label>
-          <input type="text" id="round-unit" placeholder="例：中興工程顧問股份有限公司">
-        </div>
       </div>
 
       <div class="card" style="background:var(--bg);margin-bottom:14px">
@@ -805,7 +801,7 @@ function editRound(pkgId, roundId) {
   document.getElementById('round-type').value = round.type || '進版';
   document.getElementById('round-review-level').value = round.reviewLevel || '';
   document.getElementById('round-person').value = round.person || '';
-  document.getElementById('round-unit').value = round.unit || '';
+
   document.getElementById('round-send-no').value = round.sendNo || '';
   document.getElementById('round-send-date').value = round.sendDate || '';
   document.getElementById('round-recv-no').value = round.recvNo || '';
@@ -844,7 +840,12 @@ document.getElementById('round-form').addEventListener('submit', e => {
     type: document.getElementById('round-type').value,
     reviewLevel: document.getElementById('round-review-level').value,
     person: document.getElementById('round-person').value.trim(),
-    unit: document.getElementById('round-unit').value.trim(),
+    unit: (function() {
+      const no = document.getElementById('round-recv-no').value.trim() || document.getElementById('round-send-no').value.trim();
+      if (/軌道二字第/.test(no)) return '中興工程顧問股份有限公司';
+      if (/捷高字第/.test(no)) return '台灣世曦工程顧問股份有限公司高捷專案';
+      return '';
+    })(),
     sendNo: document.getElementById('round-send-no').value.trim(),
     sendDate: document.getElementById('round-send-date').value,
     recvNo: document.getElementById('round-recv-no').value.trim(),
