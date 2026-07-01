@@ -892,7 +892,7 @@ function renderRecvList() {
       <input type="text" value="${esc(item.no)}" placeholder="收文文號" style="flex:2;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:.95rem"
         oninput="roundRecvList[${i}].no=this.value">
       <input type="date" value="${item.date}" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:.95rem"
-        oninput="roundRecvList[${i}].date=this.value">
+        oninput="roundRecvList[${i}].date=this.value;if(${i}===0)updateRoundDatePreview()">
       ${i > 0 ? `<button type="button" onclick="roundRecvList.splice(${i},1);renderRecvList()" style="border:none;background:transparent;cursor:pointer;color:#e74c3c;font-size:1.1rem">✕</button>` : '<span style="width:24px"></span>'}
     </div>
   `).join('');
@@ -913,7 +913,7 @@ function renderRoundTasks() {
 
 // Date preview
 function updateRoundDatePreview() {
-  const rd = document.getElementById('round-recv-date').value;
+  const rd = (roundRecvList[0] && roundRecvList[0].date) || '';
   const pd = parseInt(document.getElementById('round-pcm-days').value);
   const cd = parseInt(document.getElementById('round-contract-days').value);
   const pr = document.getElementById('round-pcm-result');
@@ -929,7 +929,6 @@ function updateRoundDatePreview() {
     cr.className = 'date-result show ' + (rem < 0 ? 'danger' : rem <= 7 ? 'warn' : 'ok');
   } else { cr.className = 'date-result'; }
 }
-document.getElementById('round-recv-date').addEventListener('change', updateRoundDatePreview);
 document.getElementById('round-pcm-days').addEventListener('input', updateRoundDatePreview);
 document.getElementById('round-contract-days').addEventListener('input', updateRoundDatePreview);
 
@@ -1291,8 +1290,8 @@ function renderPaymentSummary() {
                                   ${r.person ? '<span>👤 '+esc(r.person)+'</span>' : ''}
                                   ${r.sendDate ? '<span>📤 發文日：'+r.sendDate+'</span>' : ''}
                                   ${r.recvDate ? '<span>📥 收文日：'+r.recvDate+'</span>' : ''}
-                                  ${r.pcmDate ? '<span>PCM：'+r.pcmDate+'（'+remainText(r.pcmDate)+'）</span>' : ''}
-                                  ${r.contractDate ? '<span>契約：'+r.contractDate+'（'+remainText(r.contractDate)+'）</span>' : ''}
+                                  ${r.pcmDate ? '<span>PCM：'+r.pcmDate+(s!=='completed'?'（'+remainText(r.pcmDate)+'）':'')+'</span>' : ''}
+                                  ${r.contractDate ? '<span>契約：'+r.contractDate+(s!=='completed'?'（'+remainText(r.contractDate)+'）':'')+'</span>' : ''}
                                 </div>
                                 ${r.tasks && r.tasks.length > 0 ? '<div style="margin-top:6px;font-size:.8rem;color:var(--text-light)">事前作業：'+r.tasks.filter(t=>t.done).length+'/'+r.tasks.length+' 完成</div>' : ''}
                                 ${r.note ? '<div style="margin-top:4px;font-size:.8rem;color:var(--text-light)">備註：'+esc(r.note)+'</div>' : ''}
