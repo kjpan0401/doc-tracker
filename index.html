@@ -444,16 +444,8 @@
 
       <div class="card" style="background:var(--bg);margin-bottom:14px">
         <h3 style="font-size:.95rem">📥 收文資訊</h3>
-        <div class="form-row">
-          <div class="form-group">
-            <label>收文文號</label>
-            <input type="text" id="round-recv-no" placeholder="例：北工字第1130002號">
-          </div>
-          <div class="form-group">
-            <label>收文日期</label>
-            <input type="date" id="round-recv-date">
-          </div>
-        </div>
+        <div id="recv-list-container"></div>
+        <button type="button" onclick="addRecvRow()" style="margin-top:6px;padding:4px 14px;border:1px dashed var(--border);background:transparent;border-radius:6px;cursor:pointer;font-size:.9rem;color:var(--primary)">＋ 新增收文</button>
       </div>
 
       <div class="form-row">
@@ -551,6 +543,7 @@ packages.forEach(p => {
   p.rounds.forEach(r => { if (!Array.isArray(r.tasks)) r.tasks = []; });
 });
 let roundTasks = [];
+let roundRecvList = [];
 let openPkgs = {};
 let openSections = {'第一區段':true,'第二區段':true,'第三區段':true,'其他需送審的文件':true};
 const SECTIONS = ['第一區段','第二區段','第三區段','其他需送審的文件'];
@@ -788,6 +781,8 @@ function openAddRound(pkgId) {
   document.getElementById('round-contract-result').className = 'date-result';
   roundTasks = [];
   renderRoundTasks();
+  roundRecvList = [{ no: '', date: '' }];
+  renderRecvList();
   document.getElementById('round-modal').classList.add('open');
 }
 
@@ -804,12 +799,16 @@ function editRound(pkgId, roundId) {
 
   document.getElementById('round-send-no').value = round.sendNo || '';
   document.getElementById('round-send-date').value = round.sendDate || '';
-  document.getElementById('round-recv-no').value = round.recvNo || '';
-  document.getElementById('round-recv-date').value = round.recvDate || '';
   document.getElementById('round-pcm-days').value = round.pcmDays != null ? round.pcmDays : '';
   document.getElementById('round-contract-days').value = round.contractDays != null ? round.contractDays : '';
   document.getElementById('round-ivv').value = round.ivv || '';
   document.getElementById('round-note').value = round.note || '';
+  if (round.recvList && round.recvList.length > 0) {
+    roundRecvList = round.recvList.map(item => ({...item}));
+  } else {
+    roundRecvList = [{ no: round.recvNo || '', date: round.recvDate || '' }];
+  }
+  renderRecvList();
   roundTasks = round.tasks ? round.tasks.map(t => ({...t})) : [];
   renderRoundTasks();
   updateRoundDatePreview();
@@ -830,7 +829,7 @@ document.getElementById('round-form').addEventListener('submit', e => {
   e.preventDefault();
   const pkgId = document.getElementById('round-pkg-id').value;
   const editId = document.getElementById('round-edit-id').value;
-  const recvDate = document.getElementById('round-recv-date').value;
+  const recvDate = (roundRecvList[0] && roundRecvList[0].date) || '';
   const pcmDays = parseInt(document.getElementById('round-pcm-days').value);
   const contractDays = parseInt(document.getElementById('round-contract-days').value);
   const version = document.getElementById('round-version').value.trim();
@@ -841,15 +840,16 @@ document.getElementById('round-form').addEventListener('submit', e => {
     reviewLevel: document.getElementById('round-review-level').value,
     person: document.getElementById('round-person').value.trim(),
     unit: (function() {
-      const no = document.getElementById('round-recv-no').value.trim() || document.getElementById('round-send-no').value.trim();
+      const no = (roundRecvList[0] && roundRecvList[0].no) || document.getElementById('round-send-no').value.trim();
       if (/軌道二字第/.test(no)) return '中興工程顧問股份有限公司';
       if (/捷高字第/.test(no)) return '台灣世曦工程顧問股份有限公司高捷專案';
       return '';
     })(),
     sendNo: document.getElementById('round-send-no').value.trim(),
     sendDate: document.getElementById('round-send-date').value,
-    recvNo: document.getElementById('round-recv-no').value.trim(),
-    recvDate,
+    recvList: roundRecvList.filter(item => item.no || item.date).map(item => ({no: item.no.trim(), date: item.date})),
+    recvNo: (roundRecvList[0] && roundRecvList[0].no.trim()) || '',
+    recvDate: (roundRecvList[0] && roundRecvList[0].date) || '',
     pcmDays: isNaN(pcmDays) ? null : pcmDays,
     pcmDate: recvDate && !isNaN(pcmDays) ? fmtDate(addDaysToDate(recvDate, pcmDays)) : '',
     contractDays: isNaN(contractDays) ? null : contractDays,
@@ -883,6 +883,23 @@ function addRoundTask() {
   roundTasks.push({ text, done: false });
   input.value = '';
   renderRoundTasks();
+}
+function renderRecvList() {
+  const c = document.getElementById('recv-list-container');
+  if (!c) return;
+  c.innerHTML = roundRecvList.map((item, i) => `
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+      <input type="text" value="${esc(item.no)}" placeholder="收文文號" style="flex:2;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:.95rem"
+        oninput="roundRecvList[${i}].no=this.value">
+      <input type="date" value="${item.date}" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:.95rem"
+        oninput="roundRecvList[${i}].date=this.value">
+      ${i > 0 ? `<button type="button" onclick="roundRecvList.splice(${i},1);renderRecvList()" style="border:none;background:transparent;cursor:pointer;color:#e74c3c;font-size:1.1rem">✕</button>` : '<span style="width:24px"></span>'}
+    </div>
+  `).join('');
+}
+function addRecvRow() {
+  roundRecvList.push({ no: '', date: '' });
+  renderRecvList();
 }
 function renderRoundTasks() {
   document.getElementById('round-task-list').innerHTML = roundTasks.map((t, i) => `
@@ -1020,14 +1037,14 @@ function renderPkgCard(p) {
                           <span class="badge badge-info">${esc(ver)}版</span>
                           <span class="badge ${typeBadge[type] || 'badge-info'}">${esc(type)}</span>
                           ${r.sendNo ? `<span>📤 發文：${esc(r.sendNo)}</span>` : ''}
-                          ${r.recvNo ? `<span>📥 收文：${esc(r.recvNo)}</span>` : ''}
+                          ${(r.recvList && r.recvList.length > 0 ? r.recvList : (r.recvNo ? [{no:r.recvNo,date:r.recvDate}] : [])).map(e => e.no ? `<span>📥 收文：${esc(e.no)}</span>` : '').join('')}
                           ${statusBadge(s)}
                         </div>
                         <div class="round-meta">
                           ${r.reviewLevel ? `<span>審查${esc(r.reviewLevel)}</span>` : ''}
                           ${r.person ? `<span>👤 ${esc(r.person)}</span>` : ''}
                           ${r.sendDate ? `<span>📤 發文日：${r.sendDate}</span>` : ''}
-                          ${r.recvDate ? `<span>📥 收文日：${r.recvDate}</span>` : ''}
+                          ${(r.recvList && r.recvList.length > 0 ? r.recvList : (r.recvDate ? [{no:r.recvNo||'',date:r.recvDate}] : [])).map(e => e.date ? `<span>📥 收文日：${e.date}${e.no ? ' ' + esc(e.no) : ''}</span>` : '').join('')}
                           ${r.pcmDate ? `<span>PCM：${r.pcmDate}${s !== 'completed' ? '（'+remainText(r.pcmDate)+'）' : ''}</span>` : ''}
                           ${r.contractDate ? `<span>契約：${r.contractDate}${s !== 'completed' ? '（'+remainText(r.contractDate)+'）' : ''}</span>` : ''}
                         </div>
@@ -1523,8 +1540,16 @@ async function exportWordDoc() {
       // 函文單位、時間、文號及內容
       const contentParas = [];
       if (r.unit) contentParas.push(cellPara(r.unit));
-      const dateNoLine = (r.recvDate || r.sendDate || '') + (r.recvNo || r.sendNo ? '　' + (r.recvNo || r.sendNo) : '');
-      if (dateNoLine.trim()) contentParas.push(cellPara(dateNoLine, { red: true }));
+      const recvEntries = (r.recvList && r.recvList.length > 0) ? r.recvList : (r.recvNo || r.recvDate ? [{no: r.recvNo||'', date: r.recvDate||''}] : []);
+      if (recvEntries.length > 0) {
+        recvEntries.forEach(entry => {
+          const line = (entry.date || '') + (entry.no ? '　' + entry.no : '');
+          if (line.trim()) contentParas.push(cellPara(line, { red: true }));
+        });
+      } else if (r.sendDate || r.sendNo) {
+        const dateNoLine = (r.sendDate || '') + (r.sendNo ? '　' + r.sendNo : '');
+        if (dateNoLine.trim()) contentParas.push(cellPara(dateNoLine, { red: true }));
+      }
       const verLabel = r.version ? '（' + r.version + '版' + (r.type && r.type !== '進版' ? r.type : '') + '）' : '';
       contentParas.push(cellPara(p.name + verLabel, { red: true }));
       if (contentParas.length === 0) contentParas.push(cellPara(''));
