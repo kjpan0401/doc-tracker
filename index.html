@@ -1390,13 +1390,13 @@ function renderDocNumbers() {
                           <span class="badge badge-info">${esc(r.version || '—')}版</span>
                           <span class="badge ${r.type==='抽換'?'badge-warning':r.type==='外審'?'badge-purple':r.type==='會議'?'badge-gray':'badge-info'}">${esc(r.type || '進版')}</span>
                           ${r.sendNo ? `<span>📤 ${esc(r.sendNo)}</span>` : ''}
-                          ${r.recvNo ? `<span>📥 ${esc(r.recvNo)}</span>` : ''}
+                          ${(r.recvList&&r.recvList.length>0?r.recvList:(r.recvNo?[{no:r.recvNo}]:[])).map(e=>e.no?`<span>📥 ${esc(e.no)}</span>`:'').join('')}
                           ${isLatest ? '<span class="badge badge-purple">最新</span>' : statusBadge(s)}
                           <button class="btn btn-outline btn-sm" style="margin-left:auto;padding:2px 8px;font-size:.75rem" onclick="showRoundDetail('${p.id}','${r.id}')">詳情</button>
                         </div>
                         <div class="round-meta">
                           ${r.sendDate ? `<span>📤 發文日：${r.sendDate}</span>` : ''}
-                          ${r.recvDate ? `<span>📥 收文日：${r.recvDate}</span>` : ''}
+                          ${(r.recvList&&r.recvList.length>0?r.recvList:(r.recvDate?[{no:r.recvNo||'',date:r.recvDate}]:[])).map(e=>e.date?`<span>📥 收文日：${e.date}${e.no?' '+esc(e.no):''}</span>`:'').join('')}
                           ${r.pcmDate ? `<span>PCM：${r.pcmDate}${isLatest ? '（'+remainText(r.pcmDate)+'）' : ''}</span>` : ''}
                           ${r.contractDate ? `<span>契約：${r.contractDate}${isLatest ? '（'+remainText(r.contractDate)+'）' : ''}</span>` : ''}
                         </div>
