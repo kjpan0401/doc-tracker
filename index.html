@@ -544,6 +544,7 @@ packages.forEach(p => {
 });
 let roundTasks = [];
 let roundRecvList = [];
+let editingRoundCompleted = false;
 let openPkgs = {};
 let openSections = {'第一區段':true,'第二區段':true,'第三區段':true,'其他需送審的文件':true};
 const SECTIONS = ['第一區段','第二區段','第三區段','其他需送審的文件'];
@@ -783,6 +784,7 @@ function openAddRound(pkgId) {
   renderRoundTasks();
   roundRecvList = [{ no: '', date: '' }];
   renderRecvList();
+  editingRoundCompleted = false;
   document.getElementById('round-modal').classList.add('open');
 }
 
@@ -790,6 +792,7 @@ function editRound(pkgId, roundId) {
   const pkg = packages.find(p => p.id === pkgId);
   const round = pkg?.rounds.find(r => r.id === roundId);
   if (!round) return;
+  editingRoundCompleted = roundStatus(round, pkg) === 'completed';
   document.getElementById('round-pkg-id').value = pkgId;
   document.getElementById('round-edit-id').value = roundId;
   document.getElementById('round-version').value = round.version || '';
@@ -920,13 +923,13 @@ function updateRoundDatePreview() {
   const cr = document.getElementById('round-contract-result');
   if (rd && !isNaN(pd)) {
     const ds = fmtDate(addDaysToDate(rd, pd)); const rem = remainDays(ds);
-    pr.innerHTML = `📅 ${ds} 繳交PCM（${remainText(ds)}）`;
-    pr.className = 'date-result show ' + (rem < 0 ? 'danger' : rem <= 7 ? 'warn' : 'ok');
+    pr.innerHTML = editingRoundCompleted ? `📅 ${ds} 繳交PCM` : `📅 ${ds} 繳交PCM（${remainText(ds)}）`;
+    pr.className = 'date-result show ' + (editingRoundCompleted ? 'ok' : rem < 0 ? 'danger' : rem <= 7 ? 'warn' : 'ok');
   } else { pr.className = 'date-result'; }
   if (rd && !isNaN(cd)) {
     const ds = fmtDate(addDaysToDate(rd, cd)); const rem = remainDays(ds);
-    cr.innerHTML = `📅 ${ds} 契約提送（${remainText(ds)}）`;
-    cr.className = 'date-result show ' + (rem < 0 ? 'danger' : rem <= 7 ? 'warn' : 'ok');
+    cr.innerHTML = editingRoundCompleted ? `📅 ${ds} 契約提送` : `📅 ${ds} 契約提送（${remainText(ds)}）`;
+    cr.className = 'date-result show ' + (editingRoundCompleted ? 'ok' : rem < 0 ? 'danger' : rem <= 7 ? 'warn' : 'ok');
   } else { cr.className = 'date-result'; }
 }
 document.getElementById('round-pcm-days').addEventListener('input', updateRoundDatePreview);
